@@ -66,6 +66,7 @@ def wendland_rbf(neighbours_r, h):
     w_ji = (78/(28 * math.pi))*(1-q/2) ** 8 * (4*q**3 + 6.35 * q ** 2 + 4 * q + 1)
     return float(w_ji)
 
+
 def calc_hp(exp_a, dist_xy, h):
     """
     This function gives the first 10 expansions of the Hermite polynomial
@@ -223,23 +224,12 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
     return weights_x, weights_y, weights_laplace, neigh_coor_dict
 
 
-def calc_l2(test_function, derivative):
-    if derivative not in ['dtdx', 'dtdy', 'Laplace']:
-        raise ValueError("Invalid derivative type")
+def calc_l2(test_function):
 
-    if derivative == 'dtdx':
-        dt_analy = test_function.dtdx_true
-        dt_aprox = test_function.dtdx_approx
-    elif derivative == 'dtdy':
-        dt_analy = test_function.dtdy_true
-        dt_aprox = test_function.dtdy_approx
-    else:
-        dt_analy = test_function.laplace_true
-        dt_aprox = test_function.laplace_approx
-
+    dt_analy = test_function.true
+    dt_aprox = test_function.approx
     error = []
     norm = []
-
 
     for ref_node in dt_aprox:
         error.append((dt_analy[ref_node] - dt_aprox[ref_node]) ** 2)
