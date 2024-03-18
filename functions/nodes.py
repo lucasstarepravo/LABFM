@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.spatial import cKDTree
 import random
 
 
@@ -57,8 +58,7 @@ def create_nodes(total_nodes, s, polynomial):
     return coordinates
 
 
-def neighbour_nodes(coordinates, ref_node, h):
-
+def neighbour_nodes(coordinates, ref_node, h, max_neighbors=None):
     neigh_r_d = []
     neigh_xy_d = []
     neigh_coor = []
@@ -66,9 +66,47 @@ def neighbour_nodes(coordinates, ref_node, h):
     for index, (x_j, y_j) in enumerate(coordinates):
         distance = ((x_j - ref_node[0]) ** 2 + (y_j - ref_node[1]) ** 2) ** 0.5
         if distance <= 2 * h:
-            neigh_r_d.append([distance])
+            neigh_r_d.append(distance)
             neigh_xy_d.append([x_j - ref_node[0], y_j - ref_node[1]])
             neigh_coor.append([x_j, y_j])
-        else:
-            continue
-    return np.array(neigh_r_d), np.array(neigh_xy_d), np.array(neigh_coor)
+
+    # Combine lists into a single list of tuples for sorting
+    combined_list = list(zip(neigh_r_d, neigh_xy_d, neigh_coor))
+
+    # Sort the combined list by radial distance
+    sorted_combined_list = sorted(combined_list, key=lambda x: x[0])
+
+    # If max_neighbors is specified and less than the number of found neighbors, slice the lists
+    if max_neighbors is not None and max_neighbors < len(sorted_combined_list):
+        sorted_combined_list = sorted_combined_list[:max_neighbors]
+
+    # Unzip the potentially sliced list into individual lists
+    neigh_r_d, neigh_xy_d, neigh_coor = zip(*sorted_combined_list) if sorted_combined_list else ([], [], [])
+
+    # Convert lists to numpy arrays for consistency with your return statement
+    return np.array(list(neigh_r_d)), np.array(list(neigh_xy_d)), np.array(list(neigh_coor))
+
+
+def neighbour_nodes_kdtree(coordinates, ref_node, h, tree, max_neighbors=None):
+    # Query the tree for points within a radius of 2h from the reference node
+    indices = tree.query_ball_point(ref_node, 2 * h)
+
+    # If max_neighbors is specified, sort the neighbors by distance and apply the limit
+    if max_neighbors is not None and len(indices) > max_neighbors:
+        # Calculate distances to all neighbors
+        all_distances = np.sqrt(np.sum((coordinates[indices] - ref_node) ** 2, axis=1))
+        # Sort indices by distance
+        sorted_indices = np.argsort(all_distances)[:max_neighbors]
+        indices = np.array(indices)[sorted_indices]
+    else:
+        # Calculate distances to all neighbors without sorting
+        all_distances = np.sqrt(np.sum((coordinates[indices] - ref_node) ** 2, axis=1))
+
+    # Extract neighbor coordinates based on the filtered/sorted indices
+    neigh_coor = coordinates[indices]
+
+    # Calculate displacements and distances
+    displacements = neigh_coor - ref_node
+    distances = np.linalg.norm(displacements, axis=1)
+
+    return distances, displacements, neigh_coor

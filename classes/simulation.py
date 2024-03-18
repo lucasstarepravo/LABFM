@@ -7,7 +7,7 @@ from functions.plot import plot_weights, show_neighbours
 
 class Simulation:
     def __init__(self, total_nodes, polynomial):
-        self.s             = 1.0 / (total_nodes - 1)
+        self.s             = 1.0 / total_nodes
         self.h             = calc_h(self.s, polynomial)
         self.coordinates   = create_nodes(total_nodes, self.s, polynomial)
         self.weights       = Weights(self.coordinates, polynomial, self.h, total_nodes)

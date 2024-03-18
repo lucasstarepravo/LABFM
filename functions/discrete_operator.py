@@ -1,6 +1,8 @@
 import numpy as np
 import math
 from functions.nodes import neighbour_nodes
+from functions.nodes import neighbour_nodes_kdtree
+from scipy.spatial import cKDTree
 from tqdm import tqdm
 
 
@@ -32,8 +34,7 @@ def calc_scaling_vector(monomial_exponent, h):
     return scaling_m
 
 
-def calc_monomial(neigh_xy_d, polynomial, mon_power):
-    neigh_xy_d = neigh_xy_d
+def calc_monomial(neigh_xy_d, mon_power):
     monomial = []
     for index, (x_dist, y_dist) in enumerate(neigh_xy_d):
         row = []
@@ -61,7 +62,7 @@ def gaussian_rbf(neighbours_r, h):
     return w_ji
 
 
-def wendland_rbf(neighbours_r, h):
+def wendland_rbf_c6(neighbours_r, h):
 
     q = neighbours_r/h
 
@@ -70,11 +71,10 @@ def wendland_rbf(neighbours_r, h):
 
 
 def wendland_rbf_c2(neighbours_r, h):
-
     q = neighbours_r/h
-
-    w_ji = ((7/(4*math.pi))*(2*q+1)*(1-.5*q)**4)
+    w_ji = ((7/(4 * math.pi)) * (2 * q + 1) * (1 - .5*q)**4)
     return float(w_ji)
+
 
 def calc_hp(exp_a, dist_xy, h):
     """
@@ -209,14 +209,16 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
     cd_y = cd_y * scaling_vector
     cd_laplace = pointing_v(polynomial, 'Laplace')
     cd_laplace = cd_laplace * scaling_vector
+    tree = cKDTree(coordinates)
 
     for ref_x, ref_y in tqdm(coordinates, desc="Calculating Weights for " + str(total_nodes) + ", " + str(polynomial), ncols=100):
         if ref_x > 1 or ref_x < 0 or ref_y > 1 or ref_y < 0:
             continue
         else:
             ref_node            = (ref_x, ref_y)
-            neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes(coordinates, ref_node, h)
-            monomial            = calc_monomial(neigh_xy_d, polynomial, monomial_exponent) * scaling_vector
+            #neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes(coordinates, ref_node, h, max_neighbors=20)
+            neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, h, tree, max_neighbors=None)
+            monomial            = calc_monomial(neigh_xy_d, monomial_exponent) * scaling_vector
             basis_func          = calc_abf(neigh_r_d, neigh_xy_d, monomial_exponent, h)
             m_matrix            = calc_m(basis_func, monomial)
             psi_x               = np.linalg.solve(m_matrix, cd_x)
@@ -248,7 +250,6 @@ def calc_l2(test_function, derivative):
 
     error = []
     norm = []
-
 
     for ref_node in dt_aprox:
         error.append((dt_analy[ref_node] - dt_aprox[ref_node]) ** 2)

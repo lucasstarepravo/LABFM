@@ -219,3 +219,51 @@ def plot_convergence(results, derivative='dtdx', size=20):
     # Display the plot
     plt.show()
     return
+
+
+def plot_convergence2(results, derivative='dtdx', size=20):
+    # Dictionary to hold the data for each polynomial degree
+    poly_data = {}
+
+    # Dynamically populate poly_data based on available polynomial degrees in results
+    for k, v in results.items():
+        poly_degree = k[1]
+        if poly_degree in [2, 4, 6, 8]:  # Check if the degree is one of the interest
+            if poly_degree not in poly_data:
+                poly_data[poly_degree] = {'s': [], 'l2': []}
+            s_value = 1 / k[0]
+            l2_value = getattr(v, f'{derivative}_l2')
+            poly_data[poly_degree]['s'].append(s_value)
+            poly_data[poly_degree]['l2'].append(l2_value)
+
+    # Plotting
+    colors = {2: 'blue', 4: 'red', 6: 'green', 8: 'black'}
+    labels = {2: 'Polynomial = 2', 4: 'Polynomial = 4', 6: 'Polynomial = 6', 8: 'Polynomial = 8'}
+
+    for poly_degree, data in poly_data.items():
+        s = np.array(data['s'])
+        l2 = np.array(data['l2']).flatten()  # Ensure l2 is flattened
+        plt.scatter(s, l2, c=colors[poly_degree], label=labels[poly_degree], s=size)
+        plt.plot(s, l2, c=colors[poly_degree])  # Line connecting points
+
+    # Labels, title, legend, grid, and scales
+    plt.xlabel('s/H')
+    plt.ylabel('L2 norm')
+    plt.title('Convergence of ' + derivative)
+    plt.legend()
+    plt.minorticks_on()
+    plt.grid(True, which='major', linestyle='-', linewidth='0.5', color='black')
+    plt.grid(True, which='minor', linestyle=':', linewidth='0.5', color='gray')
+    plt.xscale('log')
+    plt.yscale('log')
+
+    # Adjust log ticks
+    def set_log_ticks(axis):
+        locator = plt.LogLocator(base=10.0, numticks=12)
+        axis.set_major_locator(locator)
+        axis.set_minor_locator(locator)
+
+    set_log_ticks(plt.gca().xaxis)
+    set_log_ticks(plt.gca().yaxis)
+
+    plt.show()
