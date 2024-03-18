@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.spatial import cKDTree
 import random
 
 
@@ -84,3 +85,28 @@ def neighbour_nodes(coordinates, ref_node, h, max_neighbors=None):
 
     # Convert lists to numpy arrays for consistency with your return statement
     return np.array(list(neigh_r_d)), np.array(list(neigh_xy_d)), np.array(list(neigh_coor))
+
+
+def neighbour_nodes_kdtree(coordinates, ref_node, h, tree, max_neighbors=None):
+    # Query the tree for points within a radius of 2h from the reference node
+    indices = tree.query_ball_point(ref_node, 2 * h)
+
+    # If max_neighbors is specified, sort the neighbors by distance and apply the limit
+    if max_neighbors is not None and len(indices) > max_neighbors:
+        # Calculate distances to all neighbors
+        all_distances = np.sqrt(np.sum((coordinates[indices] - ref_node) ** 2, axis=1))
+        # Sort indices by distance
+        sorted_indices = np.argsort(all_distances)[:max_neighbors]
+        indices = np.array(indices)[sorted_indices]
+    else:
+        # Calculate distances to all neighbors without sorting
+        all_distances = np.sqrt(np.sum((coordinates[indices] - ref_node) ** 2, axis=1))
+
+    # Extract neighbor coordinates based on the filtered/sorted indices
+    neigh_coor = coordinates[indices]
+
+    # Calculate displacements and distances
+    displacements = neigh_coor - ref_node
+    distances = np.linalg.norm(displacements, axis=1)
+
+    return distances, displacements, neigh_coor

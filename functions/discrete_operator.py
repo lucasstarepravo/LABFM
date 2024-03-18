@@ -1,6 +1,8 @@
 import numpy as np
 import math
 from functions.nodes import neighbour_nodes
+from functions.nodes import neighbour_nodes_kdtree
+from scipy.spatial import cKDTree
 from tqdm import tqdm
 
 
@@ -207,13 +209,15 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
     cd_y = cd_y * scaling_vector
     cd_laplace = pointing_v(polynomial, 'Laplace')
     cd_laplace = cd_laplace * scaling_vector
+    tree = cKDTree(coordinates)
 
     for ref_x, ref_y in tqdm(coordinates, desc="Calculating Weights for " + str(total_nodes) + ", " + str(polynomial), ncols=100):
         if ref_x > 1 or ref_x < 0 or ref_y > 1 or ref_y < 0:
             continue
         else:
             ref_node            = (ref_x, ref_y)
-            neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes(coordinates, ref_node, h, max_neighbors=20)
+            #neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes(coordinates, ref_node, h, max_neighbors=20)
+            neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, h, tree, max_neighbors=None)
             monomial            = calc_monomial(neigh_xy_d, monomial_exponent) * scaling_vector
             basis_func          = calc_abf(neigh_r_d, neigh_xy_d, monomial_exponent, h)
             m_matrix            = calc_m(basis_func, monomial)
