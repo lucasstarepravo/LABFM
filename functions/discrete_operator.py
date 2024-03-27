@@ -188,14 +188,14 @@ def pointing_v(polynomial, d):
     return cd
 
 
-def add_uniform_noise(vector, percentage=1):
-
-    pointing_magnitude = max(vector)
-    # Calculate the noise bounds for each entry
-    noise_bounds = np.abs(vector) * (percentage / 100.0)
+def add_uniform_noise(vector, percentage):
+    # Calculate the noise bounds based on the maximum magnitude in the vector
+    pointing_magnitude = max(np.abs(vector))
+    noise_bounds = pointing_magnitude * (percentage / 100.0)
 
     # Generate uniform noise within the specified bounds for each entry
-    noise = np.random.uniform(-noise_bounds, noise_bounds)
+    # The size of the noise array matches the size of the input vector
+    noise = np.random.uniform(-noise_bounds, noise_bounds, size=vector.shape)
 
     return noise
 
@@ -219,11 +219,14 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
     cd_x = pointing_v(polynomial, 'x')
     cd_x = cd_x * scaling_vector
 
-    cd_x = cd_x * scaling_vector + add_uniform_noise(cd_x, 10)
+    cd_x = cd_x * scaling_vector
+    cd_x = cd_x + add_uniform_noise(cd_x, 0.1)
     cd_y = pointing_v(polynomial, 'y')
     cd_y = cd_y * scaling_vector
+    cd_y = cd_y + add_uniform_noise(cd_y, 0.1)
     cd_laplace = pointing_v(polynomial, 'Laplace')
     cd_laplace = cd_laplace * scaling_vector
+    cd_laplace = cd_laplace + add_uniform_noise(cd_laplace, 0.1)
 
     for ref_x, ref_y in tqdm(coordinates, desc="Calculating Weights for " + str(total_nodes) + ", " + str(polynomial), ncols=100):
         if ref_x > 1 or ref_x < 0 or ref_y > 1 or ref_y < 0:
