@@ -2,6 +2,7 @@ import numpy as np
 import math
 from functions.nodes import neighbour_nodes
 from tqdm import tqdm
+import random
 
 
 def monomial_power(polynomial):
@@ -187,6 +188,18 @@ def pointing_v(polynomial, d):
     return cd
 
 
+def add_uniform_noise(vector, percentage=1):
+
+    pointing_magnitude = max(vector)
+    # Calculate the noise bounds for each entry
+    noise_bounds = np.abs(vector) * (percentage / 100.0)
+
+    # Generate uniform noise within the specified bounds for each entry
+    noise = np.random.uniform(-noise_bounds, noise_bounds)
+
+    return noise
+
+
 def calc_weights(coordinates, polynomial, h, total_nodes):
     """
 
@@ -205,6 +218,8 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
     scaling_vector = calc_scaling_vector(monomial_exponent, h)
     cd_x = pointing_v(polynomial, 'x')
     cd_x = cd_x * scaling_vector
+
+    cd_x = cd_x * scaling_vector + add_uniform_noise(cd_x, 10)
     cd_y = pointing_v(polynomial, 'y')
     cd_y = cd_y * scaling_vector
     cd_laplace = pointing_v(polynomial, 'Laplace')
