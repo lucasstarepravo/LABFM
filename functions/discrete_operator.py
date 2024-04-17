@@ -198,8 +198,13 @@ def add_uniform_noise(vector, percentage):
     # Generate uniform noise within the specified bounds for each entry
     # The size of the noise array matches the size of the input vector
     noise = np.random.uniform(-noise_bounds, noise_bounds, size=vector.shape)
-
     return noise
+
+
+def psi_noise(psi_vector, absolute_error):
+    noise = np.random.uniform(-abs(psi_vector)*absolute_error, abs(psi_vector)*absolute_error)
+    return noise
+
 
 
 def calc_weights(coordinates, polynomial, h, total_nodes):
@@ -221,13 +226,13 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
     cd_x = pointing_v(polynomial, 'x')
     cd_x = cd_x * scaling_vector
 
-    cd_x = cd_x + add_uniform_noise(cd_x, 0.3)
+    #cd_x = cd_x + add_uniform_noise(cd_x, 0.0001)
     cd_y = pointing_v(polynomial, 'y')
     cd_y = cd_y * scaling_vector
-    cd_y = cd_y + add_uniform_noise(cd_y, 0.3)
+    #cd_y = cd_y + add_uniform_noise(cd_y, 0.0001)
     cd_laplace = pointing_v(polynomial, 'Laplace')
     cd_laplace = cd_laplace * scaling_vector
-    cd_laplace = cd_laplace + add_uniform_noise(cd_laplace, 0.3)
+    #cd_laplace = cd_laplace + add_uniform_noise(cd_laplace, 0.0001)
     tree = cKDTree(coordinates)
 
     for ref_x, ref_y in tqdm(coordinates, desc="Calculating Weights for " + str(total_nodes) + ", " + str(polynomial), ncols=100):
@@ -244,12 +249,15 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
             psi_x               = np.linalg.solve(m_matrix, cd_x)
             psi_y               = np.linalg.solve(m_matrix, cd_y)
             psi_laplace         = np.linalg.solve(m_matrix, cd_laplace)
+            psi_x = psi_x #+ psi_noise(psi_x, 0.00001)
+            psi_y = psi_y #+ psi_noise(psi_y, 0.00001)
+            psi_laplace = psi_laplace #+ psi_noise(psi_laplace, 0.00001)
             node_weight_x       = basis_func @ psi_x
             node_weight_y       = basis_func @ psi_y
             node_weight_laplace = basis_func @ psi_laplace
-            weights_x[ref_node] = node_weight_x
-            weights_y[ref_node] = node_weight_y
-            weights_laplace[ref_node] = node_weight_laplace
+            weights_x[ref_node] = node_weight_x + psi_noise(node_weight_x, 0.00001)
+            weights_y[ref_node] = node_weight_y + psi_noise(node_weight_y, 0.00001)
+            weights_laplace[ref_node] = node_weight_laplace + psi_noise(node_weight_laplace, 0.00001)
 
     return weights_x, weights_y, weights_laplace, neigh_coor_dict
 
