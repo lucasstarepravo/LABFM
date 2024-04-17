@@ -17,7 +17,7 @@ class Simulation:
         self.laplace_l2    = calc_l2(self.test_function, 'Laplace')
 
     def plot_neighbours(self, size=8):
-        return show_neighbours(self.coordinates, self.weights, size)
+        return show_neighbours(self.coordinates, self.weights, size, save=False)
 
     def plot_weights(self, size=80, derivative='dtdx'):
         return plot_weights(self.coordinates, self.weights, size, derivative)
