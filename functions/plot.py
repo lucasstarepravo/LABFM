@@ -2,7 +2,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def show_neighbours(coordinates, weights, size):
+def show_neighbours(coordinates, weights, size, save):
+    plt.style.use('seaborn-v0_8-paper')
     neigh_coor = weights._neigh_coor
     out_domain = []
 
@@ -21,18 +22,30 @@ def show_neighbours(coordinates, weights, size):
     neigh = np.array(neigh_coor[tuple(ref_node)])
     out_domain = np.array(out_domain)
 
-    plt.scatter(coordinates[:, 0], coordinates[:, 1], c='blue', label='All Nodes', s=size)
-    plt.scatter(out_domain[:, 0], out_domain[:, 1], c='grey', label='Out of Domain', s=size)
-    plt.scatter(neigh[:, 0], neigh[:, 1], c='red', label='Neighbours', s=size)
-    plt.scatter(ref_node[0], ref_node[1], c='yellow', label='Reference Node', s=size)
-    plt.xlabel('X-coordinate')
-    plt.ylabel('Y-coordinate')
-    plt.title('Nodes and Neighbours')
-    plt.legend()
-    plt.axis('equal')
-    plt.grid(True)
+    fig, ax = plt.subplots()
+    ax.scatter(coordinates[:, 0], coordinates[:, 1], c='blue', label='All Nodes', s=size)
+    ax.scatter(out_domain[:, 0], out_domain[:, 1], c='grey', label='Out of Domain', s=size)
+    ax.scatter(neigh[:, 0], neigh[:, 1], c='red', label='Neighbours', s=size)
+    ax.scatter(ref_node[0], ref_node[1], c='yellow', label='Reference Node', s=size)
+
+    # Enhance font properties
+    ax.set_xlabel('X-coordinate', fontsize=10)
+    ax.set_ylabel('Y-coordinate', fontsize=10)
+    ax.set_title('Nodes and Neighbours', fontsize=12)
+
+    # Fine-tune legend placement and appearance
+    ax.legend(loc='upper right', fontsize=10, frameon=True, shadow=True)
+
+    # Set equal scaling by aspect ratio
+    ax.set_aspect('equal', 'box')
+
+    # Enhance grid visibility
+    ax.grid(True, linestyle='--', alpha=0.7)
+
+    # Increase the plot quality when saving
+    if save:
+        plt.savefig('nodes_and_neighbours.pdf', format='pdf', dpi=300)  # Save in high-quality PDF
     plt.show()
-    return
 
 
 def plot_weights(coordinates, weights, size, derivative):
