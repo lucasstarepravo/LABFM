@@ -255,9 +255,9 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
             node_weight_x       = basis_func @ psi_x
             node_weight_y       = basis_func @ psi_y
             node_weight_laplace = basis_func @ psi_laplace
-            weights_x[ref_node] = node_weight_x + psi_noise(node_weight_x, 0.00001)
-            weights_y[ref_node] = node_weight_y + psi_noise(node_weight_y, 0.00001)
-            weights_laplace[ref_node] = node_weight_laplace + psi_noise(node_weight_laplace, 0.00001)
+            weights_x[ref_node] = node_weight_x #+ psi_noise(node_weight_x, 0.001)
+            weights_y[ref_node] = node_weight_y #+ psi_noise(node_weight_y, 0.001)
+            weights_laplace[ref_node] = node_weight_laplace #+ psi_noise(node_weight_laplace, 0.001)
 
     return weights_x, weights_y, weights_laplace, neigh_coor_dict
 

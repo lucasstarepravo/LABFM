@@ -232,3 +232,39 @@ def plot_convergence(results, derivative='dtdx', size=20):
     # Display the plot
     plt.show()
     return
+
+
+def plot_convergence2(results, derivative='dtdx', size=20, save=False, show_legend=True, show_title=True):
+    plt.style.use('seaborn-v0_8-paper')  # Updated style as per your correction
+    # Dictionary comprehensions to segregate data
+    poly = {degree: {k: v for k, v in results.items() if k[1] == degree} for degree in [2, 4, 6, 8]}
+    fig, ax = plt.subplots()
+    colors = ['blue', 'red', 'green', 'black']  # More colors can be added if needed
+    markers = ['o', '^', 's', 'p']  # Different markers for visual distinction
+    for degree, color, marker in zip([2, 4, 6, 8], colors, markers):
+        s = np.array([1 / k[0] for k in poly[degree].keys()])
+        dtdx_l2 = np.array([getattr(v, f'{derivative}_l2') for v in poly[degree].values()])
+        # Ensure the data arrays are flattened to avoid dimension issues during plotting
+        s = s.flatten()
+        dtdx_l2 = dtdx_l2.flatten()
+        ax.scatter(s, dtdx_l2, color=color, label=f'Polynomial = {degree}', s=size, marker=marker)
+        ax.plot(s, dtdx_l2, color=color, linewidth=2)  # Line connecting points for Polynomial = degree
+    # Labels
+    ax.set_xlabel('$s/H$', fontsize=14)
+    ax.set_ylabel('$L_2$ norm', fontsize=14)
+    # Conditional title
+    if show_title:
+        ax.set_title(f'Convergence of {derivative}', fontsize=16)
+    # Conditional legend
+    if show_legend:
+        ax.legend(loc='best', fontsize=8)
+    # Grid and scale settings
+    ax.set_xscale('log')
+    ax.set_yscale('log')
+    ax.grid(True, which='both', linestyle='-', color='gray', linewidth=0.5)
+    ax.minorticks_on()
+    plt.tight_layout()
+    if save:
+        # Save the figure as a PDF with high resolution
+        plt.savefig(derivative + '_convergence_plot.pdf', format='pdf', dpi=300)
+    plt.show()
