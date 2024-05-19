@@ -4,6 +4,7 @@ from functions.nodes import neighbour_nodes
 from functions.nodes import neighbour_nodes_kdtree
 from scipy.spatial import cKDTree
 from tqdm import tqdm
+import time
 import random
 
 
@@ -234,6 +235,7 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
     cd_laplace = cd_laplace * scaling_vector
     #cd_laplace = cd_laplace + add_uniform_noise(cd_laplace, 0.0001)
     tree = cKDTree(coordinates)
+    total_laplace_time = 0
 
     for ref_x, ref_y in tqdm(coordinates, desc="Calculating Weights for " + str(total_nodes) + ", " + str(polynomial), ncols=100):
         if ref_x > 1 or ref_x < 0 or ref_y > 1 or ref_y < 0:
@@ -254,11 +256,15 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
             psi_laplace = psi_laplace #+ psi_noise(psi_laplace, 0.00001)
             node_weight_x       = basis_func @ psi_x
             node_weight_y       = basis_func @ psi_y
+            start_time = time.time()  # Start timing
             node_weight_laplace = basis_func @ psi_laplace
+            end_time = time.time()  # End timing
+            total_laplace_time += (end_time - start_time)  # Accumulate time taken for this iteration
             weights_x[ref_node] = node_weight_x #+ psi_noise(node_weight_x, 0.001)
             weights_y[ref_node] = node_weight_y #+ psi_noise(node_weight_y, 0.001)
             weights_laplace[ref_node] = node_weight_laplace #+ psi_noise(node_weight_laplace, 0.001)
 
+    print("Total time taken for Laplace calculation: ", total_laplace_time)
     return weights_x, weights_y, weights_laplace, neigh_coor_dict
 
 
