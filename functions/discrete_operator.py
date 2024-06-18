@@ -202,10 +202,15 @@ def add_uniform_noise(vector, percentage):
     return noise
 
 
-def psi_noise(psi_vector, absolute_error):
+def psi_noise_uniform(psi_vector, absolute_error):
     noise = np.random.uniform(-abs(psi_vector)*absolute_error, abs(psi_vector)*absolute_error)
     return noise
 
+
+def psi_noise_normal(psi_vector, mean_error, std_deviation):
+    # Generate normal distribution noise with the specified mean and standard deviation
+    noise = np.random.normal(mean_error, std_deviation, size=psi_vector.shape)
+    return noise
 
 
 def calc_weights(coordinates, polynomial, h, total_nodes):
@@ -251,9 +256,9 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
             psi_x               = np.linalg.solve(m_matrix, cd_x)
             psi_y               = np.linalg.solve(m_matrix, cd_y)
             psi_laplace         = np.linalg.solve(m_matrix, cd_laplace)
-            psi_x = psi_x #+ psi_noise(psi_x, 0.00001)
-            psi_y = psi_y #+ psi_noise(psi_y, 0.00001)
-            psi_laplace = psi_laplace #+ psi_noise(psi_laplace, 0.00001)
+            psi_x = psi_x + psi_noise_normal(psi_x, 0.0001, 0.0001)
+            psi_y = psi_y + psi_noise_normal(psi_y, 0.0001, 0.0001)
+            psi_laplace = psi_laplace + psi_noise_normal(psi_laplace, 0.0001, 0.0001)
             node_weight_x       = basis_func @ psi_x
             node_weight_y       = basis_func @ psi_y
             start_time = time.time()  # Start timing
