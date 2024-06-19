@@ -207,9 +207,10 @@ def psi_noise_uniform(psi_vector, absolute_error):
     return noise
 
 
-def psi_noise_normal(psi_vector, mean_error, std_deviation):
+def cd_noise_normal(psi_vector, mean_error, std_deviation):
     # Generate normal distribution noise with the specified mean and standard deviation
     noise = np.random.normal(mean_error, std_deviation, size=psi_vector.shape)
+    noise = np.random.choice([-1, 1])*noise
     return noise
 
 
@@ -253,12 +254,12 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
             monomial            = calc_monomial(neigh_xy_d, polynomial, monomial_exponent) * scaling_vector
             basis_func          = calc_abf(neigh_r_d, neigh_xy_d, monomial_exponent, h)
             m_matrix            = calc_m(basis_func, monomial)
-            psi_x               = np.linalg.solve(m_matrix, cd_x)
-            psi_y               = np.linalg.solve(m_matrix, cd_y)
-            psi_laplace         = np.linalg.solve(m_matrix, cd_laplace)
-            psi_x = psi_x + psi_noise_normal(psi_x, 0.0001, 0.0001)
-            psi_y = psi_y + psi_noise_normal(psi_y, 0.0001, 0.0001)
-            psi_laplace = psi_laplace + psi_noise_normal(psi_laplace, 0.0001, 0.0001)
+            psi_x               = np.linalg.solve(m_matrix, cd_x + cd_noise_normal(cd_x, 0.001, 0.001)* scaling_vector)
+            psi_y               = np.linalg.solve(m_matrix, cd_y + cd_noise_normal(cd_y, 0.001, 0.001)* scaling_vector)
+            psi_laplace         = np.linalg.solve(m_matrix, cd_laplace + cd_noise_normal(cd_laplace, 0.000001, 0.000001)*max(scaling_vector))
+            psi_x = psi_x# + psi_noise_normal(psi_x, 0.001, 0.001)
+            psi_y = psi_y# + psi_noise_normal(psi_y, 0.001, 0.001)
+            psi_laplace = psi_laplace# + psi_noise_normal(psi_laplace, 0.001, 0.001)
             node_weight_x       = basis_func @ psi_x
             node_weight_y       = basis_func @ psi_y
             start_time = time.time()  # Start timing
