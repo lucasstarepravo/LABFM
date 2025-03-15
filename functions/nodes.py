@@ -5,7 +5,7 @@ import random
 
 def random_matrix(seed, shape, s):
     random.seed(seed)
-    return np.array([[random.uniform(-s/4, s/4) for _ in range(shape[1])] for _ in range(shape[0])])
+    return np.array([[random.uniform(-s/6, s/6) for _ in range(shape[1])] for _ in range(shape[0])])
 
 
 def calc_h(s, polynomial):
@@ -16,13 +16,13 @@ def calc_h(s, polynomial):
     :return:
     """
     if polynomial == 2:
-        h = 1.5 * s
+        h = 4.0 * s
     elif polynomial == 4:
         h = 1.9 * s
     elif polynomial == 6:
         h = 2.3 * s
     elif polynomial == 8:
-        h = 2.7 * s
+        h = 4.0 * s
     else:
         raise ValueError("The polynomial argument must be 2, 4, 6, or 8")
 
