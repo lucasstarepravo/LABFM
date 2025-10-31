@@ -221,14 +221,17 @@ def plot_convergence(results, derivative='dtdx', size=20):
     return
 
 
-def plot_convergence2(results, derivative='dtdx', size=20):
+def plot_convergence2(results, derivative='dtdx', size=20, plot_sph=True):
+    import random
     # Dictionary to hold the data for each polynomial degree
     poly_data = {}
+    _poly_degree = set()
 
     # Dynamically populate poly_data based on available polynomial degrees in results
     for k, v in results.items():
         poly_degree = k[1]
         if poly_degree in [2, 4, 6, 8]:  # Check if the degree is one of the interest
+            _poly_degree.add(poly_degree)
             if poly_degree not in poly_data:
                 poly_data[poly_degree] = {'s': [], 'l2': []}
             s_value = 1 / k[0]
@@ -236,9 +239,21 @@ def plot_convergence2(results, derivative='dtdx', size=20):
             poly_data[poly_degree]['s'].append(s_value)
             poly_data[poly_degree]['l2'].append(l2_value)
 
+    if plot_sph:
+        poly_data['SPH'] = {'s': [], 'l2': []}
+        p = random.choice(tuple(_poly_degree))
+        for k, v in results.items():
+            poly_degree = k[1]
+            if poly_degree in [p]:  # Check if the degree is one of the interest
+                s_value = 1 / k[0]
+                l2_value = getattr(v, f'{derivative}_l2_sph')
+                poly_data['SPH']['s'].append(s_value)
+                poly_data['SPH']['l2'].append(l2_value)
+
     # Plotting
-    colors = {2: 'blue', 4: 'red', 6: 'green', 8: 'black'}
-    labels = {2: 'Polynomial = 2', 4: 'Polynomial = 4', 6: 'Polynomial = 6', 8: 'Polynomial = 8'}
+    colors = {2: 'blue', 4: 'red', 6: 'green', 8: 'black', 'SPH': 'purple'}
+    labels = {2: 'Polynomial = 2', 4: 'Polynomial = 4', 6: 'Polynomial = 6', 8: 'Polynomial = 8',
+              'SPH': 'Quintic Spline'}
 
     for poly_degree, data in poly_data.items():
         s = np.array(data['s'])

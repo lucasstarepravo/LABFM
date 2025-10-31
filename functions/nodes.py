@@ -5,7 +5,7 @@ import random
 
 def random_matrix(seed, shape, s):
     random.seed(seed)
-    return np.array([[random.uniform(-s/4, s/4) for _ in range(shape[1])] for _ in range(shape[0])])
+    return np.array([[random.uniform(-s/8, s/8) for _ in range(shape[1])] for _ in range(shape[0])])
 
 
 def calc_h(s, polynomial):
@@ -16,7 +16,7 @@ def calc_h(s, polynomial):
     :return:
     """
     if polynomial == 2:
-        h = 1.5 * s
+        h = 1.7 * s
     elif polynomial == 4:
         h = 1.9 * s
     elif polynomial == 6:
@@ -39,9 +39,9 @@ def create_nodes(total_nodes, s, polynomial):
     """
     delta = 1.0 / (total_nodes - 1)  # Determine the spacing delta between the points in the original domain
     h = calc_h(s, polynomial)
-    n = int(2 * h / delta)  # Calculate the number of points to be added on each side
-    x = np.linspace(0 - 2 * h, 1 + 2 * h, total_nodes + 2 * n)  # Creates x coordinates with boundary
-    y = np.linspace(0 - 2 * h, 1 + 2 * h, total_nodes + 2 * n)  # Creates y coordinates with boundary
+    n = int(2 / delta)  # Calculate the number of points to be added on each side
+    x = np.linspace(-1, 2, total_nodes + total_nodes*2)  # Creates x coordinates with boundary
+    y = np.linspace(-1, 2, total_nodes + total_nodes*2)  # Creates y coordinates with boundary
 
     X, Y = np.meshgrid(x, y)  # Create a 2D grid of x and y coordinates
 
@@ -87,26 +87,20 @@ def neighbour_nodes(coordinates, ref_node, h, max_neighbors=None):
     return np.array(list(neigh_r_d)), np.array(list(neigh_xy_d)), np.array(list(neigh_coor))
 
 
-def neighbour_nodes_kdtree(coordinates, ref_node, h, tree, max_neighbors=None):
-    # Query the tree for points within a radius of 2h from the reference node
-    indices = tree.query_ball_point(ref_node, 2 * h)
+def neighbour_nodes_kdtree(coordinates, ref_node, h, tree, max_neighbors=1000):
+    # Query the tree for points within a radius of h from the reference node
+    indices = tree.query_ball_point(ref_node, h)
+    max_neighbors = min(max_neighbors, len(indices))
 
-    # If max_neighbors is specified, sort the neighbors by distance and apply the limit
-    if max_neighbors is not None and len(indices) > max_neighbors:
-        # Calculate distances to all neighbors
-        all_distances = np.sqrt(np.sum((coordinates[indices] - ref_node) ** 2, axis=1))
-        # Sort indices by distance
-        sorted_indices = np.argsort(all_distances)[:max_neighbors]
-        indices = np.array(indices)[sorted_indices]
-    else:
-        # Calculate distances to all neighbors without sorting
-        all_distances = np.sqrt(np.sum((coordinates[indices] - ref_node) ** 2, axis=1))
+    all_distances = np.sqrt(np.sum((coordinates[indices] - ref_node) ** 2, axis=1))
+    sorted_indices = np.argsort(all_distances)[:max_neighbors]
+    indices = np.array(indices)[sorted_indices]
 
     # Extract neighbor coordinates based on the filtered/sorted indices
     neigh_coor = coordinates[indices]
 
     # Calculate displacements and distances
     displacements = neigh_coor - ref_node
-    distances = np.linalg.norm(displacements, axis=1)
-
+    #distances = np.linalg.norm(displacements, axis=1)
+    distances = np.sqrt(np.sum(displacements**2, axis=1))
     return distances, displacements, neigh_coor

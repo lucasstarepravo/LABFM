@@ -85,11 +85,67 @@ def dif_do(weights, surface_value, derivative):
         w_dif = weights.y
     elif derivative == 'Laplace':
         w_dif = weights.laplace
+
     # This calculates the approximation of the derivative
     dif_approx = {}
     for ref_node in neigh:
         surface_dif = np.array([surface_value[tuple(n_node)] - surface_value[tuple(ref_node)] for n_node in neigh[ref_node]]).reshape(1,-1)
         w_ref_node  = w_dif[ref_node]
         dif_approx[ref_node] = np.dot(surface_dif, w_ref_node)
+
+    return dif_approx
+
+
+def deriv_sph(weights, surface_value, derivative):
+    if derivative not in ["dtdx", "dtdy"]:
+        raise ValueError("The valid_string argument must be 'dtdx', or 'dtdy'")
+
+    if derivative == "dtdx":
+        w_dif = weights.x
+    else:
+        w_dif = weights.y
+
+    neigh = weights._neigh_coor
+    rho = weights.rho
+    dif_approx = {}
+
+    for ref_node in neigh:
+        x = ref_node[0]
+        y = ref_node[1]
+        if x > 1 or x < 0 or y > 1 or y < 0:
+            continue
+        surface_diff = []
+        for nn in neigh[ref_node]:
+            surface_diff.append(surface_value[tuple(nn)] - surface_value[ref_node])
+        surface_diff = np.array(surface_diff)
+        dif_approx[ref_node] = -(1 / rho[ref_node]) * (np.dot(surface_diff, w_dif[ref_node]))
+
+    return dif_approx
+
+
+def lap_sph(sph_weights_attr, surface_value):
+    neigh_coor = sph_weights_attr._neigh_coor
+    neigh_r    = sph_weights_attr._neigh_r
+    lap_w      = sph_weights_attr.laplace
+    rho        = sph_weights_attr.rho
+
+    dif_approx = {}
+
+    for ref_node in neigh_coor:
+        x = ref_node[0]
+        y = ref_node[1]
+        if x > 1 or x < 0 or y > 1 or y < 0:
+            continue
+        temp_ls = []
+        for i in range(neigh_coor[ref_node].shape[0]):
+            nn = neigh_coor[ref_node][i]
+            delta_x = neigh_r[ref_node][i] / neigh_r[ref_node][i] ** 2 if neigh_r[ref_node][i] != 0 else 0
+
+            surface_diff = (surface_value[tuple(nn)] - surface_value[ref_node]) * delta_x
+            surface_diff = surface_diff / rho[tuple(nn)] # this uses density of all nodes, not just the centrla ones
+            temp_ls.append(surface_diff)
+
+        temp_ls = np.array(temp_ls)
+        dif_approx[ref_node] = np.dot(temp_ls, lap_w[ref_node])
 
     return dif_approx

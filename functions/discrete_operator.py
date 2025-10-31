@@ -72,7 +72,9 @@ def wendland_rbf_c6(neighbours_r, h):
 
 def wendland_rbf_c2(neighbours_r, h):
     q = neighbours_r/h
-    w_ji = ((7/(4 * math.pi)) * (2 * q + 1) * (1 - .5*q)**4)
+    if q > 2:
+        raise ValueError('q cannot be larger than 2')
+    w_ji = (7/(4 * math.pi)) * (2 * q + 1) * (1 - .5*q)**4
     return float(w_ji)
 
 
@@ -145,7 +147,7 @@ def calc_abf(neigh_r, neigh_xy, m_power, h):  # Needs to be written
             h_a = calc_hp(power_a, x_dist, h)
             h_b = calc_hp(power_b, y_dist, h)
             two_power = 2 ** (power_a + power_b)
-            temp_variable = rbf / (two_power ** .5) * h_a * h_b
+            temp_variable = (rbf / (two_power ** .5)) * h_a * h_b
             row.append(temp_variable)
         basis_func.append(row)
     return np.array(basis_func)
@@ -211,18 +213,22 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
     cd_laplace = cd_laplace * scaling_vector
     tree = cKDTree(coordinates)
 
-    for ref_x, ref_y in tqdm(coordinates, desc="Calculating Weights for " + str(total_nodes) + ", " + str(polynomial), ncols=100):
+    for ref_x, ref_y in tqdm(coordinates, desc="Calculating LABFM_Weights for " + str(total_nodes) + ", " + str(polynomial), ncols=100):
         if ref_x > 1 or ref_x < 0 or ref_y > 1 or ref_y < 0:
             continue
         else:
             ref_node            = (ref_x, ref_y)
             #neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes(coordinates, ref_node, h, max_neighbors=20)
-            neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, h, tree, max_neighbors=None)
+            neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, 2*h, tree)
             monomial            = calc_monomial(neigh_xy_d, monomial_exponent) * scaling_vector
             basis_func          = calc_abf(neigh_r_d, neigh_xy_d, monomial_exponent, h)
             m_matrix            = calc_m(basis_func, monomial)
             psi_x               = np.linalg.solve(m_matrix, cd_x)
             psi_y               = np.linalg.solve(m_matrix, cd_y)
+            #cd_laplace1 = cd_laplace + \
+            #              cd_laplace * (np.random.choice((-1, 1)) *
+            #                            np.random.uniform(0, 1.5*1e-2, size=cd_laplace.shape)) + \
+            #              (np.random.choice((-1, 1)) * np.random.uniform(0, 1.5*1e-2, size=cd_laplace.shape))
             psi_laplace         = np.linalg.solve(m_matrix, cd_laplace)
             node_weight_x       = basis_func @ psi_x
             node_weight_y       = basis_func @ psi_y
@@ -250,6 +256,32 @@ def calc_l2(test_function, derivative):
 
     error = []
     norm = []
+
+    for ref_node in dt_aprox:
+        error.append((dt_analy[ref_node] - dt_aprox[ref_node]) ** 2)
+        norm.append(dt_analy[ref_node] ** 2)
+
+    l2 = np.sqrt(sum(error)) / np.sqrt(sum(norm))
+
+    return l2
+
+def calc_l2_sph(test_function, derivative):
+
+    if derivative not in ['dtdx', 'dtdy', 'Laplace']:
+        raise ValueError("Invalid derivative type")
+
+    if derivative == 'dtdx':
+        dt_analy = test_function.dtdx_true
+        dt_aprox = test_function.dtdx_sph
+    elif derivative == 'dtdy':
+        dt_analy = test_function.dtdy_true
+        dt_aprox = test_function.dtdy_sph
+    else:
+        dt_analy = test_function.laplace_true
+        dt_aprox = test_function.laplace_sph
+
+    error = []
+    norm  = []
 
     for ref_node in dt_aprox:
         error.append((dt_analy[ref_node] - dt_aprox[ref_node]) ** 2)
