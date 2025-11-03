@@ -96,6 +96,35 @@ def dif_do(weights, surface_value, derivative):
     return dif_approx
 
 
+def dif_gnn(weights, surface_value, derivative):
+    """
+    :param weights:
+    :param surface_value:
+    :param derivative:
+    :return:
+    """
+
+    neigh = weights._neigh_coor
+
+    if derivative.lower() not in ["laplace"]:
+        raise ValueError("The valid_string argument must be 'laplace' ")
+
+    if derivative == 'Laplace':
+        w_dif = weights.laplace
+
+    # This calculates the approximation of the derivative
+    dif_approx = {}
+    for ref_node in neigh:
+        surface_dif = np.array([surface_value[tuple(n_node)] - surface_value[tuple(ref_node)] for n_node in neigh[ref_node]]).reshape(1,-1)
+        try:
+            w_ref_node  = w_dif[ref_node]
+        except IndexError:
+            h = ref_node
+            print('hi')
+        dif_approx[ref_node] = np.dot(surface_dif, w_ref_node)
+
+    return dif_approx
+
 def deriv_sph(weights, surface_value, derivative):
     if derivative not in ["dtdx", "dtdy"]:
         raise ValueError("The valid_string argument must be 'dtdx', or 'dtdy'")

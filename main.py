@@ -2,6 +2,7 @@ from classes.simulation import run
 from functions.plot import plot_convergence
 from functions.plot import plot_convergence2
 import dill as pickle
+import pickle as pk
 
 
 if __name__ == '__main__':
@@ -16,6 +17,6 @@ if __name__ == '__main__':
 #plot_convergence(results, 'dtdy')
 #plot_convergence(results, 'Laplace')
 
-plot_convergence2(results, 'dtdx')
-plot_convergence2(results, 'dtdy')
+#plot_convergence2(results, 'dtdx')
+#plot_convergence2(results, 'dtdy')
 plot_convergence2(results, 'laplace')
