@@ -2,6 +2,40 @@ import numpy as np
 from tqdm import tqdm
 from functions.nodes import neighbour_nodes_kdtree
 from scipy.spatial import cKDTree
+import math
+
+def wendland_c2_sph(neighbours_r, h):
+    q = neighbours_r/h
+    if q > 2:
+        raise ValueError('q cannot be larger than 2')
+    w_ji = (7/(math.pi*h**2) ) * (1 - q)**4 * (1 + 4 * q)
+    return w_ji
+
+def wendland_c2_deriv(neighbours_r, neigh_xy_d, h, deriv):
+    if deriv.lower() not in ['dx', 'dy']:
+        raise ValueError("deriv must be either 'dx' or 'dy'")
+
+    s_array = neighbours_r / h
+
+    if deriv == 'dx':
+        dist = neigh_xy_d[:, 0]
+    else:
+        dist = neigh_xy_d[:, 1]
+
+    c = (-140)/(math.pi * h**4)
+    w_ji = c * dist * (1 - s_array) ** 3
+
+    return w_ji
+
+def wendland_c2_laplacian(neighbours_r, h):
+    q = neighbours_r/h
+    if q > 2:
+        raise ValueError('q cannot be larger than 2')
+    c = (-140/(math.pi * h ** 4))
+
+    w_ji = c * (1 - q) ** 2 * (2 - 5 * q)
+    return w_ji
+
 
 def quintic_spline(neighbours_r, h):
     norm = neighbours_r / h
@@ -18,27 +52,27 @@ def quintic_spline(neighbours_r, h):
             ww = 0.0
         w.append(ww)
 
-    w = 7/(478*np.pi*h**2)*np.array(w)
+    w = (7/(478*np.pi*h**2))*np.array(w)
 
     return w
 
 def quintic_spline_deriv(neighbours_r, neigh_xy_d, h, deriv):
-    norm = neighbours_r / h
+    s_array = neighbours_r / h
     w = []
 
     if deriv == 'dx':
-        dist = np.zeros_like(neighbours_r)
+        xy_div_r = np.zeros_like(neighbours_r)
         mask = neighbours_r > 0
-        dist[mask] = neigh_xy_d[mask, 0] / neighbours_r[mask]
+        xy_div_r[mask] = neigh_xy_d[mask, 0] / neighbours_r[mask]
     elif deriv == 'dy':
-        dist = np.zeros_like(neighbours_r)
+        xy_div_r = np.zeros_like(neighbours_r)
         mask = neighbours_r > 0
-        dist[mask] = neigh_xy_d[mask, 1] / neighbours_r[mask]
+        xy_div_r[mask] = neigh_xy_d[mask, 1] / neighbours_r[mask]
     else:
         raise ValueError('deriv must be dx or dy')
 
-    for i in range(norm.shape[0]):
-        s = norm[i]
+    for i in range(s_array.shape[0]):
+        s = s_array[i]
         if 0 <= s < 1:
             ww = -5*(3-s)**4 + 30*(2-s)**4 - 75*(1-s)**4
         elif 1 <= s < 2:
@@ -48,10 +82,10 @@ def quintic_spline_deriv(neighbours_r, neigh_xy_d, h, deriv):
         else:
             ww = 0
 
-        ww = (dist[i]/h)*ww
+        ww = (xy_div_r[i] / h) * ww
         w.append(ww)
 
-    w = 7/(478*np.pi*h**2)*np.array(w)
+    w = (7/(478*np.pi*h**2))*np.array(w)
     return w
 
 
@@ -77,7 +111,7 @@ def quintic_spline_laplace(neighbours_r, h):
         ww = (Fpp + (Fp / s if s > 0 else 0.0)) / (h**2)
         w.append(ww)
 
-    w = 7 / (478 * np.pi * h ** 2) * np.array(w)
+    w = (7 / (478 * np.pi * h ** 2)) * np.array(w)
     return w
 
 def sph_weights(coordinates, h, total_nodes):
