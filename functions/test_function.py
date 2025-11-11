@@ -106,21 +106,20 @@ def dif_gnn(weights, surface_value, derivative):
 
     neigh = weights._neigh_coor
 
-    if derivative.lower() not in ["laplace"]:
+    if derivative.lower() not in ["laplace", 'dtdx']:
         raise ValueError("The valid_string argument must be 'laplace' ")
 
-    if derivative == 'Laplace':
+    if derivative.lower() == 'laplace':
         w_dif = weights.laplace
+    elif derivative == 'dtdx':
+        w_dif = weights.x
 
     # This calculates the approximation of the derivative
     dif_approx = {}
     for ref_node in neigh:
         surface_dif = np.array([surface_value[tuple(n_node)] - surface_value[tuple(ref_node)] for n_node in neigh[ref_node]]).reshape(1,-1)
-        try:
-            w_ref_node  = w_dif[ref_node]
-        except IndexError:
-            h = ref_node
-            print('hi')
+        w_ref_node  = w_dif[ref_node]
+
         dif_approx[ref_node] = np.dot(surface_dif, w_ref_node)
 
     return dif_approx
@@ -176,5 +175,44 @@ def lap_sph(sph_weights_attr, surface_value):
 
         temp_ls = np.array(temp_ls)
         dif_approx[ref_node] = np.dot(temp_ls, lap_w[ref_node])
+
+    return dif_approx
+
+
+def lap_moris(sph_weights_attr, surface_value, h):
+    neigh_coor = sph_weights_attr._neigh_coor
+    neigh_r    = sph_weights_attr._neigh_r
+
+    x_w = sph_weights_attr.x
+    y_w = sph_weights_attr.y
+    neigh_dist = sph_weights_attr._neigh_xy
+
+    rho = sph_weights_attr.rho
+
+    # values of viscosity
+    v1_plus_v2 = 2
+    dif_approx = {}
+    epsilon = (0.001 * h)**2
+
+    for ref_node in neigh_coor:
+        x = ref_node[0]
+        y = ref_node[1]
+        if x > 1 or x < 0 or y > 1 or y < 0:
+            continue
+        temp_ls = []
+        for i in range(neigh_coor[ref_node].shape[0]):
+            nn = neigh_coor[ref_node][i]
+
+            surface_diff = surface_value[tuple(nn)] - surface_value[ref_node]
+            term_x = neigh_dist[ref_node][i][0] * x_w[ref_node][i]
+            term_y = neigh_dist[ref_node][i][1] * y_w[ref_node][i]
+            denominator = rho[tuple(nn)] * (neigh_r[ref_node][i] ** 2 + epsilon)
+
+            surface_diff = ((term_x + term_y) / denominator) * surface_diff
+
+            temp_ls.append(surface_diff)
+
+        val = np.sum(np.array(temp_ls))
+        dif_approx[ref_node] = val
 
     return dif_approx

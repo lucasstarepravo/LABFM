@@ -1,3 +1,5 @@
+from functions.plot import plot_kernel
+import shutil
 import numpy as np
 import math
 from functions.nodes import neighbour_nodes
@@ -8,6 +10,8 @@ from gnn.graph_constructor import InMemoryStencilGraph
 from torch_geometric.loader import DataLoader
 from gnn.preproc import load_gnn
 import torch
+from gnn.preproc import calc_moments_torch
+import os
 
 
 def monomial_power(polynomial):
@@ -78,7 +82,9 @@ def wendland_rbf_c2(neighbours_r, h):
     q = neighbours_r/h
     if q > 2:
         raise ValueError('q cannot be larger than 2')
-    w_ji = (7/(4 * math.pi)) * (2 * q + 1) * (1 - .5*q)**4
+
+    w_ji = (7/(4 * math.pi)) * (2 * q + 1) * (1 - .5*q)**4 # current one
+    #w_ji = (7 / (math.pi)) * (1 - q) ** 4 * (1 + 4 * q)
     return float(w_ji)
 
 
@@ -147,6 +153,8 @@ def calc_abf(neigh_r, neigh_xy, m_power, h):  # Needs to be written
     for index, (x_dist, y_dist) in enumerate(neigh_xy):
         row = []
         rbf = wendland_rbf_c2(neigh_r[index], h)
+
+        #rbf = wendland_rbf_c6(neigh_r[index], h)
         for power_a, power_b in m_power:
             h_a = calc_hp(power_a, x_dist, h)
             h_b = calc_hp(power_b, y_dist, h)
@@ -215,7 +223,7 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
     cd_y = cd_y * scaling_vector
     cd_laplace = pointing_v(polynomial, 'Laplace')
     noise = np.random.choice((-1, 1)) * np.random.uniform(0, 1e-3, size=cd_laplace.shape)
-    cd_laplace = cd_laplace + noise
+    #cd_laplace = cd_laplace + noise
     cd_laplace = cd_laplace * scaling_vector
     tree = cKDTree(coordinates)
 
@@ -245,31 +253,116 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
 
     return weights_x, weights_y, weights_laplace, neigh_coor_dict
 
+def gnn_weights_deriv(coordinates, h, total_nodes):
 
-def gnn_weights(coordinates, h, total_nodes):
-
-
+    derivative = 'x'
     features = []
-    embedding_size = 32
+    embedding_size = 64
+    approximation_order = 4
     tree = cKDTree(coordinates)
-    model, _ = load_gnn('./gnn/trained_model', 1)
+    model, _ = load_gnn('./gnn/trained_model', 5, model_class='a_gnn')
     ref_node_dict = []
     neigh_coor_dict = {}
+    folder = f'./gnn_graphs/{derivative}/{total_nodes}'
+    norm_h = []
+    if os.path.exists(folder):
+        shutil.rmtree(folder)
 
-    for ref_x, ref_y in tqdm(coordinates, desc="Calculating GNN_Weights for " + str(total_nodes), ncols=100):
+    for ref_x, ref_y in tqdm(coordinates, desc="Calculating GNN Deriv Weights for " + str(total_nodes), ncols=100):
         if ref_x > 1 or ref_x < 0 or ref_y > 1 or ref_y < 0:
             continue
         else:
             ref_node = (ref_x, ref_y)
             ref_node_dict.append(ref_node)
-            _ , neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, 2 * h, tree, max_neighbors=20)
-            features.append(neigh_xy_d)
+            neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, 2 * h, tree,
+                                                                               max_neighbors=20)
+            # finish implementing normalisation and denormalisation by local max radius
+            max_r = np.max(neigh_r_d)
+            norm_h.append(max_r)
+            features.append(neigh_xy_d/max_r)
 
     features_np = np.array(features)
-    features_np /= h
-    ds = InMemoryStencilGraph(features=features_np,
+    h_np = np.array(norm_h)
+    #features_np /= h
+    ds = InMemoryStencilGraph(features=features_np, # need to input h as normalisation
                               embedding_size=embedding_size,
-                              root=f'./gnn_graphs{total_nodes}')
+                              h=h_np,
+                              root=f'./gnn_graphs/{derivative}/{total_nodes}')
+
+    data_loader = DataLoader(ds,
+                             batch_size=features_np.shape[0],
+                             shuffle=False,
+                             num_workers=0,
+                             drop_last=False)
+
+    weights = []
+    unscaled_w = []
+
+    model.eval()
+    with torch.no_grad():
+        for batch in data_loader:
+            out = model(batch.x,
+                        batch.edge_index,
+                        batch.edge_attr,
+                        batch.batch)
+
+            pred_m = calc_moments_torch(batch.distances,
+                                        out,
+                                        batch.batch,
+                                        approximation_order=approximation_order)
+
+            pred_reshape = torch.reshape(out, (int(max(batch.batch)) + 1, -1))
+            weights.extend(pred_reshape.detach().cpu().numpy() / batch.h[:, None])
+
+            unscaled_w.extend(pred_reshape.detach().cpu().numpy())
+
+        # add check to labfm weights
+        weights_np = np.array(weights)
+
+        unscaled_w_np = np.array(unscaled_w)
+
+
+    weights_dict = {}
+    for key, val in zip(ref_node_dict, weights):
+        weights_dict[key] = val
+
+    return weights_dict
+
+def gnn_weights_lap(coordinates, h, total_nodes):
+
+
+    features = []
+    embedding_size = 64
+    approximation_order = 2
+    tree = cKDTree(coordinates)
+    model, _ = load_gnn('./gnn/trained_model', 6, 'a_gnn')
+    ref_node_dict = []
+    neigh_coor_dict = {}
+    neigh_r_ls = []
+
+    folder = f'./gnn_graphs/lap/{total_nodes}'
+    if os.path.exists(folder):
+        shutil.rmtree(folder)
+
+    for ref_x, ref_y in tqdm(coordinates, desc="Calculating GNN Laplace  Weights for " + str(total_nodes), ncols=100):
+        if ref_x > 1 or ref_x < 0 or ref_y > 1 or ref_y < 0:
+            continue
+        else:
+            ref_node = (ref_x, ref_y)
+            ref_node_dict.append(ref_node)
+            neigh_r_d , neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, 2 * h,
+                                                                               tree, max_neighbors=20)
+            max_r = np.max(neigh_r_d)
+            neigh_r_ls.append(max_r)
+            features.append(neigh_xy_d/max_r)
+
+    features_np = np.array(features)
+    neigh_r_np = np.array(neigh_r_ls)
+    #features_np /= h
+    ds = InMemoryStencilGraph(features=features_np,
+                              h=neigh_r_np,
+                              embedding_size=embedding_size,
+                              root=f'./gnn_graphs/lap/{total_nodes}')
 
     data_loader = DataLoader(ds,
                              batch_size=256,
@@ -278,19 +371,34 @@ def gnn_weights(coordinates, h, total_nodes):
                              drop_last=False)
 
     weights = []
+    unscaled_w = []
+
     model.eval()
-    h_squared = h ** 2
+    all_pred_m = torch.zeros((5,1), dtype=torch.float32)
+    all_pred_m[[2,4]] = 1.0
+    #h_squared = h ** 2
     with torch.no_grad():
         for batch in data_loader:
             out = model(batch.x,
                         batch.edge_index,
                         batch.edge_attr,
                         batch.batch)
+
+            pred_m = calc_moments_torch(batch.distances,
+                                        out,
+                                        batch.batch,
+                                        approximation_order=approximation_order)
+
+            all_pred_m = torch.cat((all_pred_m, pred_m), dim=1)
             pred_reshape = torch.reshape(out, (int(max(batch.batch)) + 1, -1))
-            weights.extend(pred_reshape.detach().cpu().numpy() / h_squared)
+            weights.extend(pred_reshape.detach().cpu().numpy() / batch.h[:, None]**2)
+
+            unscaled_w.extend(pred_reshape.detach().cpu().numpy())
 
         # add check to labfm weights
         weights_np = np.array(weights)
+
+        unscaled_w_np = np.array(unscaled_w)
 
     weights_dict = {}
     for key, val in zip(ref_node_dict, weights):
@@ -342,20 +450,20 @@ def calc_l2(test_function, derivative):
 
     return l2
 
-def calc_l2_sph(test_function, derivative):
+def calc_l2_qspline(test_function, derivative):
 
     if derivative not in ['dtdx', 'dtdy', 'Laplace']:
         raise ValueError("Invalid derivative type")
 
     if derivative == 'dtdx':
         dt_analy = test_function.dtdx_true
-        dt_aprox = test_function.dtdx_sph
+        dt_aprox = test_function.dtdx_qspline
     elif derivative == 'dtdy':
         dt_analy = test_function.dtdy_true
-        dt_aprox = test_function.dtdy_sph
+        dt_aprox = test_function.dtdy_qspline
     else:
         dt_analy = test_function.laplace_true
-        dt_aprox = test_function.laplace_sph
+        dt_aprox = test_function.laplace_qspline
 
     error = []
     norm  = []
@@ -366,4 +474,14 @@ def calc_l2_sph(test_function, derivative):
 
     l2 = np.sqrt(sum(error)) / np.sqrt(sum(norm))
 
+    return l2
+
+def calc_l2_all(pred, true):
+    error = []
+    norm  = []
+    for ref_node in pred:
+        error.append((true[ref_node] - pred[ref_node]) ** 2)
+        norm.append(true[ref_node] ** 2)
+
+    l2 = np.sqrt(sum(error)) / np.sqrt(sum(norm))
     return l2

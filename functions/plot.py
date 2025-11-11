@@ -2,6 +2,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+def plot_kernel(features, labels):
+    # flatten all arrays consistently
+    x = features[:, :, 0].flatten()
+    y = features[:, :, 1].flatten()
+    c = labels.flatten()  # same order as x and y
+
+    plt.figure(figsize=(6, 6))
+    sc = plt.scatter(x, y, c=c, cmap='viridis', s=5, alpha=0.8)
+    plt.xlabel('x distance')
+    plt.ylabel('y distance')
+    plt.title('Neighbour offsets coloured by weight')
+    plt.axis('equal')
+    plt.colorbar(sc, label='Weights magnitude')
+    plt.show()
+
+
 def show_neighbours(coordinates, weights, size):
     neigh_coor = weights._neigh_coor
     out_domain = []
@@ -221,7 +237,10 @@ def plot_convergence(results, derivative='dtdx', size=20):
     return
 
 
-def plot_convergence2(results, derivative='dtdx', size=20, plot_sph=True, plot_gnn=True):
+def plot_convergence2(results, derivative='dtdx', size=20,
+                      plot_qspline=True,
+                      plot_gnn=True,
+                      plot_wc2=True):
     import random
     # Dictionary to hold the data for each polynomial degree
     poly_data = {}
@@ -239,18 +258,29 @@ def plot_convergence2(results, derivative='dtdx', size=20, plot_sph=True, plot_g
             poly_data[poly_degree]['s'].append(s_value)
             poly_data[poly_degree]['l2'].append(l2_value)
 
-    if plot_sph:
-        poly_data['SPH'] = {'s': [], 'l2': []}
+    if plot_qspline:
+        poly_data['Quintic Spline'] = {'s': [], 'l2': []}
         p = random.choice(tuple(_poly_degree))
         for k, v in results.items():
             poly_degree = k[1]
             if poly_degree in [p]:  # Check if the degree is one of the interest
                 s_value = 1 / k[0]
-                l2_value = getattr(v, f'{derivative}_l2_sph')
-                poly_data['SPH']['s'].append(s_value)
-                poly_data['SPH']['l2'].append(l2_value)
+                l2_value = getattr(v, f'{derivative}_l2_qspline')
+                poly_data['Quintic Spline']['s'].append(s_value)
+                poly_data['Quintic Spline']['l2'].append(l2_value)
 
-    if derivative == 'laplace':
+    if plot_wc2:
+        poly_data['WC2'] = {'s': [], 'l2': []}
+        p = random.choice(tuple(_poly_degree))
+        for k, v in results.items():
+            poly_degree = k[1]
+            if poly_degree in [p]:  # Check if the degree is one of the interest
+                s_value = 1 / k[0]
+                l2_value = getattr(v, f'{derivative}_l2_wc2')
+                poly_data['WC2']['s'].append(s_value)
+                poly_data['WC2']['l2'].append(l2_value)
+
+    if derivative == 'laplace' or derivative == 'dtdx':
         if plot_gnn:
             poly_data['GNN'] = {'s': [], 'l2': []}
             p = random.choice(tuple(_poly_degree))
@@ -263,9 +293,10 @@ def plot_convergence2(results, derivative='dtdx', size=20, plot_sph=True, plot_g
                     poly_data['GNN']['l2'].append(l2_value)
 
     # Plotting
-    colors = {2: 'blue', 4: 'red', 6: 'green', 8: 'black', 'SPH': 'purple', 'GNN': 'orange'}
+    colors = {2: 'blue', 4: 'red', 6: 'green', 8: 'black',
+              'Quintic Spline': 'purple', 'GNN': 'orange', 'WC2': 'cyan'}
     labels = {2: 'Polynomial = 2', 4: 'Polynomial = 4', 6: 'Polynomial = 6', 8: 'Polynomial = 8',
-              'SPH': 'Quintic Spline', 'GNN': 'GNN'}
+              'Quintic Spline': 'Quintic Spline', 'GNN': 'GNN', 'WC2': 'Wendland C${2}$'}
 
     for poly_degree, data in poly_data.items():
         s = np.array(data['s'])

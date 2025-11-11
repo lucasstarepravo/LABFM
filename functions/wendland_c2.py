@@ -1,0 +1,90 @@
+import numpy as np
+from tqdm import tqdm
+from functions.nodes import neighbour_nodes_kdtree
+from scipy.spatial import cKDTree
+import math
+from functions.plot import plot_kernel
+
+def wendland_c2_sph(neighbours_r, h):
+    q = neighbours_r/h
+
+    if (q < 0).any():
+        raise ValueError("r must be >= 0")
+
+    w_ji = (7/(math.pi*h**2) ) * (1 - q)**4 * (1 + 4 * q)
+    return w_ji
+
+def wendland_c2_deriv_rad(neighbours_r, h):
+    q = neighbours_r/h
+
+    if (q < 0).any():
+        raise ValueError("r must be >= 0")
+
+
+    c = (-140 * neighbours_r)/(math.pi * h**4)
+    w_ji = c * (1 - q) ** 3
+    return w_ji
+
+def wendland_c2_deriv(neighbours_r, neigh_xy_d, h, deriv):
+    if deriv.lower() not in ['dx', 'dy']:
+        raise ValueError("deriv must be either 'dx' or 'dy'")
+
+    q = neighbours_r / h
+    if (q < 0).any():
+        raise ValueError("r must be >= 0")
+
+
+    deriv = deriv.lower()
+    if deriv == 'dx':
+        dist = neigh_xy_d[:, 0]
+    else:
+        dist = neigh_xy_d[:, 1]
+
+    c = (-140)/(math.pi * h**4)
+    w_ji = c * dist * (1 - q) ** 3
+
+    return w_ji
+
+
+def wendland_c2_laplacian(neighbours_r, h):
+    q = neighbours_r/h
+    if (q < 0).any():
+        raise ValueError("r must be >= 0")
+
+    c = (-140/(math.pi * h ** 4))
+
+    w_ji = c * (1 - q) ** 2 * (2 - 5 * q)
+    return w_ji
+
+
+def wendlandc2_weights(coordinates, h, total_nodes):
+    tree = cKDTree(coordinates)
+
+    neigh_r_dict    = {}
+    neigh_coor_dict = {}
+    neigh_xy_dist   = {}
+    density_dict    = {}
+    weights_x       = {}
+    weights_y       = {}
+    weights_laplace = {}
+    weights_r       = {}
+
+    #plot_xy =
+
+    for ref_x, ref_y in tqdm(coordinates, desc="Calculating Wendland Weights for " + str(total_nodes) + ", ", ncols=100):
+        # int his current form the density of all node swill be computed, but we only need up to the neighbours of the edge nodes
+        ref_node = (ref_x, ref_y)
+        neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, h, tree)
+        density_dict[ref_node] = np.ones(shape=neigh_r_d.shape) @ wendland_c2_sph(neigh_r_d, h)
+        if ref_x > 1 or ref_x < 0 or ref_y > 1 or ref_y < 0:
+            continue
+        else:
+            #plot_xy.append(neigh_xy_d)
+            neigh_xy_dist[ref_node] = neigh_xy_d
+            neigh_r_dict[ref_node] = neigh_r_d
+            weights_x[ref_node] = wendland_c2_deriv(neigh_r_d, neigh_xy_d, h, 'dx')
+            weights_y[ref_node] = wendland_c2_deriv(neigh_r_d, neigh_xy_d, h, 'dy')
+            weights_laplace[ref_node] = wendland_c2_laplacian(neigh_r_d, h)
+            weights_r[ref_node] = wendland_c2_deriv_rad(neigh_r_d, h)
+
+    return weights_x, weights_y, weights_laplace, weights_r, density_dict, neigh_coor_dict, neigh_r_dict, neigh_xy_dist

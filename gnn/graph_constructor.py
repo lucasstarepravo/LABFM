@@ -10,11 +10,13 @@ class InMemoryStencilGraph(InMemoryDataset):
                  features,
                  embedding_size,
                  root,
+                 h,
                  transform=None,
                  pre_transform=None,
                  pre_filter=None):
 
         self.features  = np.ascontiguousarray(features).astype(np.float32, copy=False)
+        self.h = np.ascontiguousarray(h).astype(np.float32, copy=False)
 
         self.total_datapoints = features.shape[0] # num of nodes in domain
         self.max_neighbours = self.features.shape[1] # max number of neighbours
@@ -63,11 +65,15 @@ class InMemoryStencilGraph(InMemoryDataset):
             edge_index = torch.concat((edge_index, rev_edge_index), dim=1)
 
             x = torch.ones((self.features.shape[1], self.embedding_size), dtype=torch.float32)
+            x[0, :] = 1 / (x.shape[0] ** .5)
+
+            w_norm = torch.tensor(self.h[idx], dtype=torch.float32)
 
             data = Data(x=x,
                         distances=distances,
                         edge_index=edge_index,
-                        edge_attr=edge_attr)
+                        edge_attr=edge_attr,
+                        h=w_norm)
 
 
             data_list.append(data)
