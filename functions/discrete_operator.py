@@ -260,7 +260,7 @@ def gnn_weights_deriv(coordinates, h, total_nodes):
     embedding_size = 64
     approximation_order = 4
     tree = cKDTree(coordinates)
-    model, _ = load_gnn('./gnn/trained_model', 5, model_class='a_gnn')
+    model, _ = load_gnn('./gnn/trained_model', 7, model_class='a_gnn')
     ref_node_dict = []
     neigh_coor_dict = {}
     folder = f'./gnn_graphs/{derivative}/{total_nodes}'
@@ -275,13 +275,14 @@ def gnn_weights_deriv(coordinates, h, total_nodes):
             ref_node = (ref_x, ref_y)
             ref_node_dict.append(ref_node)
             neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, 2 * h, tree,
-                                                                               max_neighbors=20)
+                                                                               max_neighbors=30)
             # finish implementing normalisation and denormalisation by local max radius
             max_r = np.max(neigh_r_d)
             norm_h.append(max_r)
             features.append(neigh_xy_d/max_r)
 
     features_np = np.array(features)
+    features_np = features_np[:, :20, :]
     h_np = np.array(norm_h)
     #features_np /= h
     ds = InMemoryStencilGraph(features=features_np, # need to input h as normalisation

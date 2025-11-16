@@ -16,7 +16,7 @@ def calc_h(s, polynomial):
     :return:
     """
     if polynomial == 2:
-        h = 1.5 * s
+        h = 1.9 * s
     elif polynomial == 4:
         h = 1.9 * s
     elif polynomial == 6:
@@ -39,9 +39,9 @@ def create_nodes(total_nodes, s, polynomial):
     """
     delta = 1.0 / (total_nodes - 1)  # Determine the spacing delta between the points in the original domain
     h = calc_h(s, polynomial)
-    n = int(2 / delta)  # Calculate the number of points to be added on each side
-    x = np.linspace(-1, 2, total_nodes + total_nodes*2)  # Creates x coordinates with boundary
-    y = np.linspace(-1, 2, total_nodes + total_nodes*2)  # Creates y coordinates with boundary
+    n = int(8*h / delta)  # Calculate the number of points to be added on each side
+    x = np.linspace(0 - 8*h, 1 + 8*h, total_nodes + n*2)  # Creates x coordinates with boundary
+    y = np.linspace(0 - 8*h, 1 + 8*h, total_nodes + n*2)  # Creates y coordinates with boundary
 
     X, Y = np.meshgrid(x, y)  # Create a 2D grid of x and y coordinates
 
