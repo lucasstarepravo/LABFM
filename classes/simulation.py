@@ -1,6 +1,6 @@
 from functions.discrete_operator import calc_l2, calc_l2_qspline, calc_l2_gnn, calc_l2_all
 from functions.nodes import create_nodes, calc_h
-from functions.plot import plot_weights, show_neighbours
+from functions.plot import plot_weights, show_neighbours, plot_stability
 from functions.qspline import qspline_weights
 from functions.wendland_c2 import wendlandc2_weights
 from functions.discrete_operator import calc_weights, gnn_weights_lap, gnn_weights_deriv
@@ -26,7 +26,7 @@ class GNN_Weights:
     def __init__(self, coordinates, h, total_nodes):
         self.laplace, self._neigh_coor = gnn_weights_lap(coordinates, h, total_nodes)
         self.x = gnn_weights_deriv(coordinates, h, total_nodes)
-        '''Commenting out gnn dx'''
+
 
 class TestFunction:
     def __init__(self,
@@ -56,6 +56,9 @@ class TestFunction:
         '''Commenting out gnn dx'''
         self.dtdx_gnn    = dif_gnn(gnn_w, self.surface_value, 'dtdx')
         self.laplace_gnn = dif_gnn(gnn_w, self.surface_value, 'Laplace')
+        if True:
+            plot_stability(gnn_w, self.surface_value)
+        '''Commenting out gnn dx'''
 
 
 class Simulation:
@@ -97,6 +100,7 @@ class Simulation:
         self.dtdx_l2_gnn        = calc_l2_all(self.test_function.dtdx_gnn,
                                               self.test_function.dtdx_true)
         self.laplace_l2_gnn     =  calc_l2_gnn(self.test_function, 'Laplace')
+
 
     def plot_neighbours(self, size=8):
         return show_neighbours(self.coordinates, self.labfm_w, size)

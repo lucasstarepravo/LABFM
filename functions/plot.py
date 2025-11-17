@@ -18,6 +18,64 @@ def plot_kernel(features, labels):
     plt.show()
 
 
+def plot_stability(weights, surface_value, plot=True):
+    print('Computing eigenvalues')
+    x_w = weights.x
+    neigh_coor = weights._neigh_coor
+
+    A = np.zeros((len(surface_value), len(surface_value)))
+
+    surf_val_loc = list(surface_value.keys())
+    #surf_val_ls = list(surface_value.values())
+
+    for i in range(len(surf_val_loc)):
+        loc = surf_val_loc[i]
+        if loc not in neigh_coor.keys(): continue
+
+        for j in range(len(neigh_coor[loc])):
+            n_j = neigh_coor[loc][j]
+            neigh_idx = surf_val_loc.index(tuple(n_j))
+            A[i, neigh_idx] = x_w[loc][j].numpy()
+
+        A[i, i] = 0
+        A[i, i] = - np.sum(A[i, :])
+
+    vals = np.linalg.eigvals(A)
+
+    if plot:
+        real_parts = vals.real
+        imag_parts = vals.imag
+
+        plt.figure(figsize=(7, 7))
+        plt.scatter(real_parts, imag_parts, s=10)  # larger markers for readability
+
+        plt.xlabel("Real component of eigenvalue", fontsize=14)
+        plt.ylabel("Imaginary component of eigenvalue", fontsize=14)
+        plt.title("Spectrum of the Matrix in the Complex Plane", fontsize=16)
+
+        plt.axhline(0)
+        plt.axvline(0)
+        plt.grid(True, linestyle="--", linewidth=0.6)
+
+        plt.tight_layout()
+        plt.show()
+
+
+
+
+    # I need to loop through each location in surface value
+    # if a value is in neigh_coor, then populate that row
+        # to populate the row you need to match the weight with the node of that surface value
+        # to match get the position of the weight based on neigh_coor
+        # check in which "row" of surface value it is
+    # if not, move to next one
+
+
+
+    w=1
+    print('hi')
+
+
 def show_neighbours(coordinates, weights, size):
     neigh_coor = weights._neigh_coor
     out_domain = []
