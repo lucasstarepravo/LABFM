@@ -1,35 +1,30 @@
 import numpy as np
+from numpy.typing import NDArray
 from scipy.spatial import cKDTree
 import random
 
 
-def random_matrix(seed, shape, s):
+def random_matrix(seed: float, shape: tuple, s: float) -> NDArray:
     random.seed(seed)
-    return np.array([[random.uniform(-s/6, s/6) for _ in range(shape[1])] for _ in range(shape[0])])
+    return np.array([[random.uniform(-s/8, s/8) for _ in range(shape[1])] for _ in range(shape[0])])
 
 
-def calc_h(s, polynomial):
-    """
+def calc_h(s: float, kernel: int | str) -> float:
 
-    :param s:
-    :param polynomial:
-    :return:
-    """
-    if polynomial == 2:
-        h = 1.9 * s
-    elif polynomial == 4:
-        h = 1.9 * s
-    elif polynomial == 6:
-        h = 2.3 * s
-    elif polynomial == 8:
-        h = 2.7 * s
+    if   kernel == 2: h = 1.5 * s
+    elif kernel == 4: h = 1.9 * s
+    elif kernel == 6: h = 2.3 * s
+    elif kernel == 8: h = 2.7 * s
+    elif kernel in ['quintic_s', 'wc2']: h = 4 * s
+    elif kernel == 'gnn': h = 2.3 * s
+
     else:
-        raise ValueError("The polynomial argument must be 2, 4, 6, or 8")
-
+        raise ValueError("The kernel argument must be in (2, 4, 6, 8), or one of "
+                         "the following 'wc2', 'quintic_s', 'gnn'")
     return h
 
 
-def create_nodes(total_nodes, s, polynomial):
+def create_nodes(total_nodes: int, s: float, h: float) -> NDArray:
     """
     :param total_nodes: is a scalar that states the number of nodes we would like to have inside the domain
     :param s: is a scalar that determines the average distance between points inside the comp. stencil
@@ -38,10 +33,11 @@ def create_nodes(total_nodes, s, polynomial):
     y coordinates, respectively. It is possible to access the ith node with "coordinates[i]"
     """
     delta = 1.0 / (total_nodes - 1)  # Determine the spacing delta between the points in the original domain
-    h = calc_h(s, polynomial)
-    n = int(8*h / delta)  # Calculate the number of points to be added on each side
-    x = np.linspace(0 - 8*h, 1 + 8*h, total_nodes + n*2)  # Creates x coordinates with boundary
-    y = np.linspace(0 - 8*h, 1 + 8*h, total_nodes + n*2)  # Creates y coordinates with boundary
+    n = int(2*h / delta)  # Calculate the number of points to be added on each side
+
+    # change this to only create nodes to the specific size of h
+    x = np.linspace(-0.5 - 2*h, 0.5 + 2*h, total_nodes + n*2)  # Creates x coordinates with boundary
+    y = np.linspace(-0.5 - 2*h, 0.5 + 2*h, total_nodes + n*2)  # Creates y coordinates with boundary
 
     X, Y = np.meshgrid(x, y)  # Create a 2D grid of x and y coordinates
 
@@ -55,36 +51,9 @@ def create_nodes(total_nodes, s, polynomial):
     coordinates = np.column_stack((X.ravel(), Y.ravel()))
     coordinates = np.around(coordinates, 15)
 
+
+
     return coordinates
-
-
-def neighbour_nodes(coordinates, ref_node, h, max_neighbors=None):
-    neigh_r_d = []
-    neigh_xy_d = []
-    neigh_coor = []
-
-    for index, (x_j, y_j) in enumerate(coordinates):
-        distance = ((x_j - ref_node[0]) ** 2 + (y_j - ref_node[1]) ** 2) ** 0.5
-        if distance <= 2 * h:
-            neigh_r_d.append(distance)
-            neigh_xy_d.append([x_j - ref_node[0], y_j - ref_node[1]])
-            neigh_coor.append([x_j, y_j])
-
-    # Combine lists into a single list of tuples for sorting
-    combined_list = list(zip(neigh_r_d, neigh_xy_d, neigh_coor))
-
-    # Sort the combined list by radial distance
-    sorted_combined_list = sorted(combined_list, key=lambda x: x[0])
-
-    # If max_neighbors is specified and less than the number of found neighbors, slice the lists
-    if max_neighbors is not None and max_neighbors < len(sorted_combined_list):
-        sorted_combined_list = sorted_combined_list[:max_neighbors]
-
-    # Unzip the potentially sliced list into individual lists
-    neigh_r_d, neigh_xy_d, neigh_coor = zip(*sorted_combined_list) if sorted_combined_list else ([], [], [])
-
-    # Convert lists to numpy arrays for consistency with your return statement
-    return np.array(list(neigh_r_d)), np.array(list(neigh_xy_d)), np.array(list(neigh_coor))
 
 
 def neighbour_nodes_kdtree(coordinates, ref_node, h, tree, max_neighbors=1000):

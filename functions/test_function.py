@@ -66,75 +66,31 @@ def laplace_phi(coordinates):
     return result_dic
 
 
-def dif_do(weights, surface_value, derivative):
+def dif_do(weights, surface_value, neigh_coor):
     """
     :param weights:
     :param surface_value:
     :param derivative:
     :return:
     """
-
-    neigh = weights._neigh_coor
-
-    if derivative not in ["dtdx", "dtdy", "Laplace"]:
-        raise ValueError("The valid_string argument must be 'dtdx', 'dtdy' or 'Laplace' ")
-
-    if derivative == "dtdx":
-        w_dif = weights.x
-    elif derivative == "dtdy":
-        w_dif = weights.y
-    elif derivative == 'Laplace':
-        w_dif = weights.laplace
+    # change weights variable, it will now only be receiving the necesary weights,
+    # not all weights
+    neigh = neigh_coor
 
     # This calculates the approximation of the derivative
     dif_approx = {}
     for ref_node in neigh:
         surface_dif = np.array([surface_value[tuple(n_node)] - surface_value[tuple(ref_node)] for n_node in neigh[ref_node]]).reshape(1,-1)
-        w_ref_node  = w_dif[ref_node]
+        w_ref_node  = weights[ref_node]
         dif_approx[ref_node] = np.dot(surface_dif, w_ref_node)
 
     return dif_approx
 
 
-def dif_gnn(weights, surface_value, derivative):
-    """
-    :param weights:
-    :param surface_value:
-    :param derivative:
-    :return:
-    """
+def deriv_sph(weights, surface_value, neigh_coor, rho):
 
-    neigh = weights._neigh_coor
+    neigh = neigh_coor
 
-    if derivative.lower() not in ["laplace", 'dtdx']:
-        raise ValueError("The valid_string argument must be 'laplace' ")
-
-    if derivative.lower() == 'laplace':
-        w_dif = weights.laplace
-    elif derivative == 'dtdx':
-        w_dif = weights.x
-
-    # This calculates the approximation of the derivative
-    dif_approx = {}
-    for ref_node in neigh:
-        surface_dif = np.array([surface_value[tuple(n_node)] - surface_value[tuple(ref_node)] for n_node in neigh[ref_node]]).reshape(1,-1)
-        w_ref_node  = w_dif[ref_node]
-
-        dif_approx[ref_node] = np.dot(surface_dif, w_ref_node)
-
-    return dif_approx
-
-def deriv_sph(weights, surface_value, derivative):
-    if derivative not in ["dtdx", "dtdy"]:
-        raise ValueError("The valid_string argument must be 'dtdx', or 'dtdy'")
-
-    if derivative == "dtdx":
-        w_dif = weights.x
-    else:
-        w_dif = weights.y
-
-    neigh = weights._neigh_coor
-    rho = weights.rho
     dif_approx = {}
 
     for ref_node in neigh:
@@ -146,17 +102,12 @@ def deriv_sph(weights, surface_value, derivative):
         for nn in neigh[ref_node]:
             surface_diff.append(surface_value[tuple(nn)] - surface_value[ref_node])
         surface_diff = np.array(surface_diff)
-        dif_approx[ref_node] = -(1 / rho[ref_node]) * (np.dot(surface_diff, w_dif[ref_node]))
+        dif_approx[ref_node] = -(1 / rho[ref_node]) * (np.dot(surface_diff, weights[ref_node]))
 
     return dif_approx
 
 
-def lap_sph(sph_weights_attr, surface_value):
-    neigh_coor = sph_weights_attr._neigh_coor
-    neigh_r    = sph_weights_attr._neigh_r
-    lap_w      = sph_weights_attr.laplace
-    rho        = sph_weights_attr.rho
-
+def lap_sph_standard(neigh_coor, neigh_r, lap_w, rho, surface_value):
     dif_approx = {}
 
     for ref_node in neigh_coor:
@@ -179,15 +130,7 @@ def lap_sph(sph_weights_attr, surface_value):
     return dif_approx
 
 
-def lap_moris(sph_weights_attr, surface_value, h):
-    neigh_coor = sph_weights_attr._neigh_coor
-    neigh_r    = sph_weights_attr._neigh_r
-
-    x_w = sph_weights_attr.x
-    y_w = sph_weights_attr.y
-    neigh_dist = sph_weights_attr._neigh_xy
-
-    rho = sph_weights_attr.rho
+def lap_moris(neigh_coor, neigh_r, x_w, y_w, neigh_dist, rho, h, surface_value):
 
     # values of viscosity
     v1_plus_v2 = 2

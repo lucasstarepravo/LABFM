@@ -76,15 +76,15 @@ def wendlandc2_weights(coordinates, h, total_nodes):
         ref_node = (ref_x, ref_y)
         neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, h, tree)
         density_dict[ref_node] = np.ones(shape=neigh_r_d.shape) @ wendland_c2_sph(neigh_r_d, h)
-        if ref_x > 1 or ref_x < 0 or ref_y > 1 or ref_y < 0:
-            continue
-        else:
-            #plot_xy.append(neigh_xy_d)
-            neigh_xy_dist[ref_node] = neigh_xy_d
-            neigh_r_dict[ref_node] = neigh_r_d
-            weights_x[ref_node] = wendland_c2_deriv(neigh_r_d, neigh_xy_d, h, 'dx')
-            weights_y[ref_node] = wendland_c2_deriv(neigh_r_d, neigh_xy_d, h, 'dy')
-            weights_laplace[ref_node] = wendland_c2_laplacian(neigh_r_d, h)
-            weights_r[ref_node] = wendland_c2_deriv_rad(neigh_r_d, h)
+
+        if ref_x > 0.5 or ref_x < -0.5 or ref_y > 0.5 or ref_y < -0.5: continue
+
+        #plot_xy.append(neigh_xy_d)
+        neigh_xy_dist[ref_node] = neigh_xy_d
+        neigh_r_dict[ref_node] = neigh_r_d
+        weights_x[ref_node] = wendland_c2_deriv(neigh_r_d, neigh_xy_d, h, 'dx')
+        weights_y[ref_node] = wendland_c2_deriv(neigh_r_d, neigh_xy_d, h, 'dy')
+        weights_laplace[ref_node] = wendland_c2_laplacian(neigh_r_d, h)
+        weights_r[ref_node] = wendland_c2_deriv_rad(neigh_r_d, h)
 
     return weights_x, weights_y, weights_laplace, weights_r, density_dict, neigh_coor_dict, neigh_r_dict, neigh_xy_dist

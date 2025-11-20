@@ -97,13 +97,12 @@ def qspline_weights(coordinates, h, total_nodes):
         ref_node = (ref_x, ref_y)
         neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, 3*h, tree)
         density_dict[ref_node] = np.ones(shape=neigh_r_d.shape) @ quintic_spline(neigh_r_d, h)
-        if ref_x > 1 or ref_x < 0 or ref_y > 1 or ref_y < 0:
-            continue
-        else:
-            neigh_r_dict[ref_node] = neigh_r_d
-            weights_x[ref_node] = quintic_spline_deriv(neigh_r_d, neigh_xy_d, h, 'dx')
-            weights_y[ref_node] = quintic_spline_deriv(neigh_r_d, neigh_xy_d, h, 'dy')
-            weights_laplace[ref_node] = quintic_spline_laplace(neigh_r_d, h)
+        if ref_x > 0.5 or ref_x < -0.5 or ref_y > 0.5 or ref_y < -0.5: continue
+
+        neigh_r_dict[ref_node] = neigh_r_d
+        weights_x[ref_node] = quintic_spline_deriv(neigh_r_d, neigh_xy_d, h, 'dx')
+        weights_y[ref_node] = quintic_spline_deriv(neigh_r_d, neigh_xy_d, h, 'dy')
+        weights_laplace[ref_node] = quintic_spline_laplace(neigh_r_d, h)
 
 
     return weights_x, weights_y, weights_laplace, density_dict, neigh_coor_dict, neigh_r_dict

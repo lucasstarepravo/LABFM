@@ -1,15 +1,17 @@
-from torch_geometric.data import Data, Dataset, InMemoryDataset
+from typing import Union, List, Tuple
+
+from torch_geometric.data import Data, Dataset
 import torch
 import numpy as np
 import logging
+from torch_geometric.data.data import BaseData
 from tqdm import tqdm
 
 
-class InMemoryStencilGraph(InMemoryDataset):
+class StencilGraph(Dataset):
     def __init__(self,
                  features,
                  embedding_size,
-                 root,
                  h,
                  transform=None,
                  pre_transform=None,
@@ -21,7 +23,6 @@ class InMemoryStencilGraph(InMemoryDataset):
         self.total_datapoints = features.shape[0] # num of nodes in domain
         self.max_neighbours = self.features.shape[1] # max number of neighbours
         self.embedding_size = embedding_size
-        #self.transform_my_class = ToUndirected()
 
         # prebuild once
         self.edges_max = torch.tensor(
@@ -29,14 +30,16 @@ class InMemoryStencilGraph(InMemoryDataset):
             dtype=torch.long).T
 
         #self.transform = ToUndirected()
-        super().__init__(root, transform, pre_transform, pre_filter)
-        self.load(self.processed_paths[0])
+        super().__init__(transform, pre_transform, pre_filter)
 
+    def len(self) -> int:
+        return self.total_datapoints
 
-    @property
-    def processed_file_names(self):
-        return ['data.pt']
+    def get(self, idx: int) -> BaseData:
+        return self.data[idx]
 
+    def processed_file_names(self) -> Union[str, List[str], Tuple[str, ...]]:
+        return 'hello'
 
     def process(self):
         data_list = []
@@ -78,5 +81,4 @@ class InMemoryStencilGraph(InMemoryDataset):
 
             data_list.append(data)
 
-
-        self.save(data_list, self.processed_paths[0])
+        self.data = data_list
