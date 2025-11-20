@@ -25,15 +25,13 @@ class AbstractBaseClass:
 
 
     def approx_diff_op(self):
-        # fix this function to only require the weights, surface value, and neigh_coor, no need for derivative string
         self.dtdx_approx    = dif_do(self.x, self.surface_value, self._neigh_coor)
         #self.dtdy_approx    = dif_do(self.y, self.surface_value, self._neigh_coor)
         self.laplace_approx = dif_do(self.laplace, self.surface_value, self._neigh_coor)
 
 
     def approx_diff_op_sph(self, moris_op=True):
-        # fix this function to only require the weights, surface value, and neigh_coor, no need for derivative string
-        self.dtdx_approx    = deriv_sph(self.x, self.surface_value, self._neigh_coor, self.rho) # make sure rho was already computed here
+        self.dtdx_approx    = deriv_sph(self.x, self.surface_value, self._neigh_coor, self.rho)
         self.dtdy_approx    = deriv_sph(self.y, self.surface_value, self._neigh_coor, self.rho)
         if moris_op:
             lap_sph = lap_moris
@@ -70,13 +68,9 @@ class LABFM(AbstractBaseClass):
 
 class GNN(AbstractBaseClass):
     def __init__(self, total_nodes):
-        # for gnn, I don't really care about h, I care about the number of neighbours
-        # so I can theoretically set h equivalent ot max polynomial and in the discrete operator
-        # I filter the number of neighbours I want
         self.s = 1.0 / (total_nodes - 1)
-        self.h = calc_h(self.s, kernel=8)  # need to make sure that this is fine
+        self.h = calc_h(self.s, kernel=8)
         super().__init__(total_nodes, self.h)
-        # join all weight computations of the GNN in one function
         (self.x,
          self.laplace,
          self._neigh_coor) = gnn_weights(self.coordinates, self.h, self.total_nodes)
@@ -110,7 +104,7 @@ class QSPline(AbstractBaseClass):
         super().__init__(total_nodes, self.h)
         (self.x,
          self.y,
-         self.laplace, # implement kernel radius deriv
+         self.laplace,
          self.rho,
          self._neigh_coor,
          self._neigh_r) = qspline_weights(self.coordinates, self.h, self.total_nodes)
