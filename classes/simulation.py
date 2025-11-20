@@ -9,10 +9,11 @@ from functions.test_function import (test_function, dif_analytical, laplace_phi,
 
 
 class AbstractBaseClass:
-    def __init__(self, total_nodes, h):
+    def __init__(self, total_nodes, kernel):
         # global variables used for all approximations
         self.s              = 1.0 / (total_nodes - 1)
-        self.coordinates    = create_nodes(total_nodes, self.s, h)
+        self.h              = calc_h(self.s, kernel)
+        self.coordinates    = create_nodes(total_nodes, self.s, self.h)
         self.total_nodes    = total_nodes
 
 
@@ -54,9 +55,8 @@ class AbstractBaseClass:
 class LABFM(AbstractBaseClass):
     def __init__(self, polynomial, total_nodes):
         self.s = 1.0 / (total_nodes - 1)
-        self.h = calc_h(self.s, polynomial)
-        super().__init__(total_nodes, self.h)
         self.polynomial = polynomial
+        super().__init__(total_nodes, self.polynomial)
         (self.x,
          self.y,
          self.laplace,
@@ -69,8 +69,7 @@ class LABFM(AbstractBaseClass):
 class GNN(AbstractBaseClass):
     def __init__(self, total_nodes):
         self.s = 1.0 / (total_nodes - 1)
-        self.h = calc_h(self.s, kernel=8)
-        super().__init__(total_nodes, self.h)
+        super().__init__(total_nodes, 'gnn')
         (self.x,
          self.laplace,
          self._neigh_coor) = gnn_weights(self.coordinates, self.h, self.total_nodes)
@@ -82,8 +81,7 @@ class GNN(AbstractBaseClass):
 class WLandC2(AbstractBaseClass):
     def __init__(self, total_nodes):
         self.s = 1.0 / (total_nodes - 1)
-        self.h = 4 * self.s
-        super().__init__(total_nodes, self.h)
+        super().__init__(total_nodes, 'wc2')
         (self.x,
          self.y,
          self.laplace,
@@ -101,7 +99,7 @@ class QSPline(AbstractBaseClass):
     def __init__(self, total_nodes):
         self.s = 1.0 / (total_nodes - 1)
         self.h = 4 * self.s
-        super().__init__(total_nodes, self.h)
+        super().__init__(total_nodes, 'quintic_s')
         (self.x,
          self.y,
          self.laplace,

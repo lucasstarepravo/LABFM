@@ -11,10 +11,11 @@ import pickle as pk
 
 bool_plot_stability = False
 bool_plot_convergence = True
+idx_to_stability = 3
 
 if __name__ == '__main__':
-    total_nodes_list = [5, 10, 20, 50, 100]
-    kernel_list = ['gnn'] * 5
+    total_nodes_list = [10, 20, 50, 100] * 4
+    kernel_list = ['quintic_s'] * 4 + ['wc2'] * 4 + [2] * 4 + ['gnn'] * 4
     results = run(total_nodes_list, kernel_list)
 
 if bool_plot_convergence:
@@ -27,6 +28,6 @@ if bool_plot_convergence:
 # Plot stability of operator
 if bool_plot_stability:
     plot_stability(results,
-                   kernel=kernel_list[0],
-                   resolution=total_nodes_list[0],
+                   kernel=kernel_list[idx_to_stability],
+                   resolution=total_nodes_list[idx_to_stability],
                    diff_operator='dx')

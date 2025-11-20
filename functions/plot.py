@@ -57,6 +57,7 @@ def plot_stability(results: dict,
     # surface value is not actually required, I only need the order of the position of the nodes i.e. coor
     A = np.zeros((len(coor), len(coor)))
 
+    coord_to_idx = {tuple(x): i for i, x in enumerate(coor)}
 
     #surf_val_ls = list(surface_value.values())
 
@@ -66,9 +67,8 @@ def plot_stability(results: dict,
 
         for j in range(neigh_coor[tuple(loc)].shape[0]):
             n_j = neigh_coor[tuple(loc)][j]
-            neigh_idx = np.where((coor[:, 0] == n_j[0]) & (coor[:, 1] == n_j[1]))
-            if neigh_idx[0].shape[0] > 1: raise ValueError('Multiple nodes matched')
-            A[i, neigh_idx[0]] = np.array(weights[tuple(loc)][j])
+            neigh_idx = coord_to_idx[tuple(n_j)]
+            A[i, neigh_idx] = np.array(weights[tuple(loc)][j])
 
         A[i, i] = 0
         A[i, i] = - np.sum(A[i, :])

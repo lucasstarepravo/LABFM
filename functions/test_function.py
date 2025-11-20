@@ -96,8 +96,7 @@ def deriv_sph(weights, surface_value, neigh_coor, rho):
     for ref_node in neigh:
         x = ref_node[0]
         y = ref_node[1]
-        if x > 1 or x < 0 or y > 1 or y < 0:
-            continue
+        if x > 0.5 or x < -0.5 or y > 0.5 or y < -0.5: continue
         surface_diff = []
         for nn in neigh[ref_node]:
             surface_diff.append(surface_value[tuple(nn)] - surface_value[ref_node])
@@ -113,8 +112,7 @@ def lap_sph_standard(neigh_coor, neigh_r, lap_w, rho, surface_value):
     for ref_node in neigh_coor:
         x = ref_node[0]
         y = ref_node[1]
-        if x > 1 or x < 0 or y > 1 or y < 0:
-            continue
+        if x > 0.5 or x < -0.5 or y > 0.5 or y < -0.5: continue
         temp_ls = []
         for i in range(neigh_coor[ref_node].shape[0]):
             nn = neigh_coor[ref_node][i]
@@ -140,7 +138,7 @@ def lap_moris(neigh_coor, neigh_r, x_w, y_w, neigh_dist, rho, h, surface_value):
     for ref_node in neigh_coor:
         x = ref_node[0]
         y = ref_node[1]
-        if x > 1 or x < 0 or y > 1 or y < 0:
+        if x > 0.5 or x < -0.5 or y > 0.5 or y < -0.5:
             continue
         temp_ls = []
         for i in range(neigh_coor[ref_node].shape[0]):

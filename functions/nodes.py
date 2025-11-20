@@ -51,8 +51,6 @@ def create_nodes(total_nodes: int, s: float, h: float) -> NDArray:
     coordinates = np.column_stack((X.ravel(), Y.ravel()))
     coordinates = np.around(coordinates, 15)
 
-
-
     return coordinates
 
 
