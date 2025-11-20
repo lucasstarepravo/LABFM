@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.misc import derivative
+from scipy.sparse import csr_matrix
+from scipy.sparse.linalg import eigs
 
 
 def plot_kernel(features, labels):
@@ -72,6 +73,9 @@ def plot_stability(results: dict,
 
         A[i, i] = 0
         A[i, i] = - np.sum(A[i, :])
+
+    A_masked = np.ma.masked_values(A, 0)
+    A_sparse = csr_matrix(A)
 
 
     kernel_plot_title = {'quintic_s': 'Quintic Spline',

@@ -9,13 +9,13 @@ import pickle as pk
 # GNN:            'gnn'
 # LABFM:          [2,4,6,8]
 
-bool_plot_stability = False
-bool_plot_convergence = True
+bool_plot_stability = True
+bool_plot_convergence = False
 idx_to_stability = 3
 
 if __name__ == '__main__':
-    total_nodes_list = [10, 20, 50, 100] * 4
-    kernel_list = ['quintic_s'] * 4 + ['wc2'] * 4 + [2] * 4 + ['gnn'] * 4
+    total_nodes_list = [10, 20, 50, 100]
+    kernel_list = ['quintic_s'] * 4
     results = run(total_nodes_list, kernel_list)
 
 if bool_plot_convergence:

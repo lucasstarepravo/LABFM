@@ -30,7 +30,7 @@ class StencilGraph(Dataset):
             dtype=torch.long).T
 
         #self.transform = ToUndirected()
-        super().__init__(transform, pre_transform, pre_filter)
+        super().__init__(transform, pre_transform, pre_filter, log=False)
 
     def len(self) -> int:
         return self.total_datapoints
@@ -44,11 +44,10 @@ class StencilGraph(Dataset):
     def process(self):
         data_list = []
 
-        for idx in tqdm(range(self.total_datapoints), desc="Processing graphs"):
+        for idx in self.total_datapoints:
 
             # edge features and label
             # removing the central weight node
-
             #num_neigh = self.distances[d_idx, 1:, 0][torch.isfinite(self.distances[d_idx, 1:, 0])]
             # removing the distance of the central node to itself (0.0)
             edge_attr = self.features[idx, 1:, :]
