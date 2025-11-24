@@ -98,7 +98,6 @@ class WLandC2(AbstractBaseClass):
 class QSPline(AbstractBaseClass):
     def __init__(self, total_nodes):
         self.s = 1.0 / (total_nodes - 1)
-        self.h = 4 * self.s
         super().__init__(total_nodes, 'quintic_s')
         (self.x,
          self.y,
