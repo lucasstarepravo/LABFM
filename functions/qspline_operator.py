@@ -90,12 +90,21 @@ def qspline_weights(coordinates, h, total_nodes):
     weights_x       = {}
     weights_y       = {}
     weights_laplace = {}
+    support_radius = 2.2 * h
+
+
 
 
     for ref_x, ref_y in tqdm(coordinates, desc="Calculating Quintinc Spline Weights for " + str(total_nodes) + ", ", ncols=100):
         # int his current form the density of all node swill be computed, but we only need up to the neighbours of the edge nodes
         ref_node = (ref_x, ref_y)
-        neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, 3*h, tree)
+        (neigh_r_d,
+         neigh_xy_d,
+         neigh_coor_dict[ref_node]) = neighbour_nodes_kdtree(coordinates,
+                                                             ref_node,
+                                                             support_radius,
+                                                             tree,
+                                                             max_neighbors=200)
         density_dict[ref_node] = np.ones(shape=neigh_r_d.shape) @ quintic_spline(neigh_r_d, h)
         if ref_x > 0.5 or ref_x < -0.5 or ref_y > 0.5 or ref_y < -0.5: continue
 
