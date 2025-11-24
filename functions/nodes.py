@@ -6,16 +6,31 @@ import random
 
 def random_matrix(seed: float, shape: tuple, s: float) -> NDArray:
     random.seed(seed)
-    return np.array([[random.uniform(-s/8, s/8) for _ in range(shape[1])] for _ in range(shape[0])])
+    return np.array([[random.uniform(-s/2, s/2) for _ in range(shape[1])] for _ in range(shape[0])])
+
+def h_to_nn(s: float, nn: int, H_by_h: float) -> float:
+    # This is used to compute the smoothing scale based on the desired number of neighbours
+    """
+
+    :param s: average distance
+    :param nn: number of neighbours (obtained from Dehnen and Aly 2012)
+    :param H_by_h: ratio from max radius and smoothing scale (obtained from Dehnen and Aly 2012)
+    :return:
+    h: smoothing scale
+    """
+    h = s * ((nn / np.pi) ** .5) / H_by_h
+    return h
 
 
 def calc_h(s: float, kernel: int | str) -> float:
+    # This determines the smoothing scale
 
     if   kernel == 2: h = 1.5 * s
     elif kernel == 4: h = 1.9 * s
     elif kernel == 6: h = 2.3 * s
     elif kernel == 8: h = 2.7 * s
-    elif kernel in ['quintic_s', 'wc2']: h = 4 * s
+    elif kernel == 'wc2': h = h_to_nn(s, 100, H_by_h=1.897367)
+    elif kernel == 'quintic_s': h = h_to_nn(s, 180, H_by_h=2.158131)
     elif kernel == 'gnn': h = 2.3 * s
 
     else:
@@ -33,11 +48,14 @@ def create_nodes(total_nodes: int, s: float, h: float) -> NDArray:
     y coordinates, respectively. It is possible to access the ith node with "coordinates[i]"
     """
     delta = 1.0 / (total_nodes - 1)  # Determine the spacing delta between the points in the original domain
-    n = int(2*h / delta)  # Calculate the number of points to be added on each side
+    two_times_influence_radius = 4 * h
+    n = int(two_times_influence_radius / delta)  # Calculate the number of points to be added on each side
 
     # change this to only create nodes to the specific size of h
-    x = np.linspace(-0.5 - 2*h, 0.5 + 2*h, total_nodes + n*2)  # Creates x coordinates with boundary
-    y = np.linspace(-0.5 - 2*h, 0.5 + 2*h, total_nodes + n*2)  # Creates y coordinates with boundary
+    x = np.linspace(-0.5 - two_times_influence_radius,
+                    0.5 + two_times_influence_radius, total_nodes + n * 2)  # Creates x coordinates with boundary
+    y = np.linspace(-0.5 - two_times_influence_radius,
+                    0.5 + two_times_influence_radius, total_nodes + n * 2)  # Creates y coordinates with boundary
 
     X, Y = np.meshgrid(x, y)  # Create a 2D grid of x and y coordinates
 
