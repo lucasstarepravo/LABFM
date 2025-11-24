@@ -1,7 +1,7 @@
 .venv/
 .idea/
 __pycache__/
-gnn_*
+gnn_graphs
 ???
 .DS_Store
 plots
