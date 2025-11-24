@@ -98,10 +98,10 @@ def deriv_sph(weights, surface_value, neigh_coor, rho):
         y = ref_node[1]
         if x > 0.5 or x < -0.5 or y > 0.5 or y < -0.5: continue
         surface_diff = []
-        for nn in neigh[ref_node]:
-            surface_diff.append(surface_value[tuple(nn)] - surface_value[ref_node])
+        for i, nn in enumerate(neigh[ref_node]):
+            surface_diff.append((surface_value[tuple(nn)] - surface_value[ref_node]) / rho[tuple(nn)])
         surface_diff = np.array(surface_diff)
-        dif_approx[ref_node] = -(1 / rho[ref_node]) * (np.dot(surface_diff, weights[ref_node]))
+        dif_approx[ref_node] = -np.dot(surface_diff, weights[ref_node])
 
     return dif_approx
 
