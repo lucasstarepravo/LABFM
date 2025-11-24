@@ -4,19 +4,23 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import eigs
 
 
-def plot_kernel(features, labels):
+def plot_kernel(features, labels=None, alpha=0.6, size = 2):
     # flatten all arrays consistently
     x = features[:, :, 0].flatten()
     y = features[:, :, 1].flatten()
-    c = labels.flatten()  # same order as x and y
+    if labels is not None:
+        c = labels.flatten()
 
     plt.figure(figsize=(6, 6))
-    sc = plt.scatter(x, y, c=c, cmap='viridis', s=5, alpha=0.8)
+    if labels is not None:
+        sc = plt.scatter(x, y, c=c, cmap='viridis', s=size, alpha=alpha)
+    else:
+        sc = plt.scatter(x, y, cmap='viridis', s=size, alpha=alpha)
     plt.xlabel('x distance')
     plt.ylabel('y distance')
-    plt.title('Neighbour offsets coloured by weight')
+    plt.title('Neighbour offsets coloured by target')
     plt.axis('equal')
-    plt.colorbar(sc, label='Weights magnitude')
+    plt.colorbar(sc, label='Target value')
     plt.show()
 
 
