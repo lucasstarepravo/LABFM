@@ -1,5 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib.ticker import LogLocator
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import eigs
 
@@ -111,6 +112,45 @@ def plot_stability(results: dict,
     plt.show()
 
 
+def plot_resolving_p(results, kernel, resolution, size=20):
+    res_power = results[(resolution, kernel)].k
+
+    y1 = res_power[:, 0]  # first column
+    y2 = res_power[:, 1]  # second column
+    x = res_power[:, 2]  # third column
+    norm = np.max(x)
+
+    # (Optional) sort by x so lines look nice
+    idx = np.argsort(x)
+    x_sorted = x[idx] #/ norm
+    y1_sorted = y1[idx] #/ norm
+    y2_sorted = y2[idx] #/ norm
+
+    # ---------- Figure 1 ----------
+    # y-axis: first column
+    # x-axis: third column
+    # plus diagonal: third column vs third column
+    plt.figure()
+    plt.plot(x_sorted, y1_sorted, 'o-', label='LABFM 2nd order')
+    plt.plot(x_sorted, x_sorted, '--', label='spectral accuracy')
+    plt.xlabel('k_hat')
+    plt.ylabel('Real (k_eff)')
+    plt.legend()
+    plt.grid(True)
+
+    # ---------- Figure 2 ----------
+    # y-axis: second column
+    # x-axis: third column
+    plt.figure()
+    plt.plot(x_sorted, y2_sorted, 'o-', label='col1 vs col2')
+    plt.xlabel('khat')
+    plt.ylabel('Im (k_eff)')
+    plt.legend()
+    plt.grid(True)
+
+    plt.show()
+
+    return
 
 
 def plot_convergence(results, derivative='dx', size=20):
@@ -157,9 +197,10 @@ def plot_convergence(results, derivative='dx', size=20):
 
     # Adjust log ticks
     def set_log_ticks(axis):
-        locator = plt.LogLocator(base=10.0, numticks=12)
-        axis.set_major_locator(locator)
-        axis.set_minor_locator(locator)
+        major_locator = LogLocator(base=10.0, numticks=12)
+        minor_locator = LogLocator(base=10.0, subs=np.arange(2, 10) * 0.1, numticks=12)
+        axis.set_major_locator(major_locator)
+        axis.set_minor_locator(minor_locator)
 
     set_log_ticks(plt.gca().xaxis)
     set_log_ticks(plt.gca().yaxis)
