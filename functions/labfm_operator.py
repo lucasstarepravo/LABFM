@@ -219,13 +219,15 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
     #cd_laplace = cd_laplace + noise
     cd_laplace = cd_laplace * scaling_vector
     tree = cKDTree(coordinates)
+    neigh_xy_dist = {}
 
     for ref_x, ref_y in tqdm(coordinates, desc="Calculating LABFM_Weights for " + str(total_nodes) + ", " + str(polynomial), ncols=100):
         if ref_x > 0.5 or ref_x < -0.5 or ref_y > 0.5 or ref_y < -0.5: continue
 
         ref_node            = (ref_x, ref_y)
         #neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes(coordinates, ref_node, h, max_neighbors=20)
-        neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, 2*h, tree)
+        neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, 2*h, tree, max_neighbors=35)
+        neigh_xy_dist[ref_node] = neigh_xy_d
         monomial            = calc_monomial(neigh_xy_d, monomial_exponent) * scaling_vector
         basis_func          = calc_abf(neigh_r_d, neigh_xy_d, monomial_exponent, h)
         m_matrix            = calc_m(basis_func, monomial)
@@ -239,11 +241,11 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
         node_weight_x       = basis_func @ psi_x
         node_weight_y       = basis_func @ psi_y
         node_weight_laplace = basis_func @ psi_laplace
-        weights_x[ref_node] = node_weight_x
-        weights_y[ref_node] = node_weight_y
-        weights_laplace[ref_node] = node_weight_laplace
+        weights_x[ref_node] = node_weight_x[:,0]
+        weights_y[ref_node] = node_weight_y[:,0]
+        weights_laplace[ref_node] = node_weight_laplace[:,0]
 
-    return weights_x, weights_y, weights_laplace, neigh_coor_dict
+    return weights_x, weights_y, weights_laplace, neigh_coor_dict, neigh_xy_dist
 
 
 def calc_l2_gnn(test_function, derivative='laplace'):
