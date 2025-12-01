@@ -4,8 +4,9 @@ from functions.qspline_operator import qspline_weights
 from functions.wendland_c2_operator import wendlandc2_weights
 from functions.labfm_operator import calc_weights
 from functions.gnn_operator import gnn_weights
-from functions.test_function import (test_function, dif_analytical, laplace_phi, dif_do,
-                                     deriv_sph, lap_sph_standard, lap_moris)
+from functions.p_test_function import (test_function, dif_analytical, laplace_phi, dif_do,
+                                       deriv_sph, lap_sph_standard, lap_moris)
+from functions.f_test_function import resolving_power
 
 
 class AbstractBaseClass:
@@ -17,7 +18,12 @@ class AbstractBaseClass:
         self.total_nodes    = total_nodes
 
 
-    def test_function_method(self):
+    def r_power(self):
+        # make sure all methods get self._neigh_xy
+        # currently only wc2 does
+        self.k = resolving_power(self.x, self.s, self._neigh_xy, k_samples=100, n_samples=1e10)
+
+    def polynomial_test_function_method(self):
         # used to compute the true values of the surface and its differential fields
         self.surface_value = test_function(self.coordinates)
         self.dtdx_true     = dif_analytical(self.coordinates, 'dtdx')
@@ -60,10 +66,12 @@ class LABFM(AbstractBaseClass):
         (self.x,
          self.y,
          self.laplace,
-         self._neigh_coor) = calc_weights(self.coordinates, self.polynomial, self.h, self.total_nodes)
-        self.test_function_method()
+         self._neigh_coor,
+         self._neigh_xy) = calc_weights(self.coordinates, self.polynomial, self.h, self.total_nodes)
+        self.polynomial_test_function_method()
         self.approx_diff_op()
         self.calc_l2()
+        #self.r_power()
 
 
 class GNN(AbstractBaseClass):
@@ -73,7 +81,7 @@ class GNN(AbstractBaseClass):
         (self.x,
          self.laplace,
          self._neigh_coor) = gnn_weights(self.coordinates, self.h, self.total_nodes)
-        self.test_function_method()
+        self.polynomial_test_function_method()
         self.approx_diff_op()
         self.calc_l2()
 
@@ -90,9 +98,10 @@ class WLandC2(AbstractBaseClass):
          self._neigh_coor,
          self._neigh_r,
          self._neigh_xy) = wendlandc2_weights(self.coordinates, self.h, self.total_nodes)
-        self.test_function_method()
+        self.polynomial_test_function_method()
         self.approx_diff_op_sph()
         self.calc_l2()
+        #self.r_power()
 
 
 class QSPline(AbstractBaseClass):
@@ -105,7 +114,7 @@ class QSPline(AbstractBaseClass):
          self.rho,
          self._neigh_coor,
          self._neigh_r) = qspline_weights(self.coordinates, self.h, self.total_nodes)
-        self.test_function_method()
+        self.polynomial_test_function_method()
         self.approx_diff_op_sph(moris_op=False)
         self.calc_l2()
 
