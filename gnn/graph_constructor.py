@@ -44,7 +44,7 @@ class StencilGraph(Dataset):
     def process(self):
         data_list = []
 
-        for idx in self.total_datapoints:
+        for idx in range(self.total_datapoints):
 
             # edge features and label
             # removing the central weight node
@@ -66,7 +66,7 @@ class StencilGraph(Dataset):
             rev_edge_index = edge_index[tmp, :]
             edge_index = torch.concat((edge_index, rev_edge_index), dim=1)
 
-            x = torch.ones((self.features.shape[1], self.embedding_size), dtype=torch.float32)
+            x = torch.ones((self.features.shape[1], 1), dtype=torch.float32)
             x[0, :] = 1 / (x.shape[0] ** .5)
 
             w_norm = torch.tensor(self.h[idx], dtype=torch.float32)

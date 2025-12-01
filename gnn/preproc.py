@@ -1,5 +1,6 @@
 from gnn.MessageGNN import MessagePassingGNN
 from gnn.AttenGNN import AMessagePassingGNN
+from gnn.SNA_GNN import SNAMessagePassingGNN
 import logging
 import pickle as pk
 from collections import OrderedDict
@@ -13,15 +14,19 @@ from torch_geometric.nn.aggr import SumAggregation
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def load_gnn(model_path, model_id, model_class='gnn'):
+def load_gnn(model_path, model_id, model_class='gnn', full_path=''):
 
-    path = os.path.join(model_path, f'attrs{model_id}.pth')
+    if full_path:
+        path = full_path
+    else:
+        path = os.path.join(model_path, f'attrs{model_id}.pth')
+
     attrs = torch.load(path,
                        map_location='cpu',
                        weights_only=False)
 
-    if model_class.lower() not in ['gnn', 'a_gnn']:
-        raise ValueError("model_class must be 'gnn', or 'a_gnn' ")
+    if model_class.lower() not in ['gnn', 'a_gnn', 'sna_gnn']:
+        raise ValueError("model_class must be 'gnn', 'sna_gnn', or 'a_gnn' ")
 
     layers = attrs['layers']
     embedding_size = attrs['embedding_size']
@@ -29,9 +34,12 @@ def load_gnn(model_path, model_id, model_class='gnn'):
     if model_class.lower() == 'gnn':
         model_instance = MessagePassingGNN(embedding_size=embedding_size,
                                            layers=layers)
-    else:
+    elif model_class.lower() == 'a_gnn':
         model_instance = AMessagePassingGNN(embedding_size=embedding_size,
                                            layers=layers)
+    else:
+        model_instance = SNAMessagePassingGNN(embedding_size=embedding_size,
+                                            layers=layers)
 
     weight_dict = OrderedDict()
     weight_dict.update(
