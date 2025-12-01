@@ -2,10 +2,6 @@ import numpy as np
 
 
 def test_function(coordinates):
-    """
-    :param nodes:
-    :return:
-    """
 
     x = coordinates[:, 0] - .1453
     y = coordinates[:, 1] - .16401
