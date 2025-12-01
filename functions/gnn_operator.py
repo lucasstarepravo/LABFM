@@ -16,11 +16,13 @@ def gnn_weights(coordinates, h, total_nodes):
     # used to gather all features, later will all be passed to GNN
     features = []
     # needed to construct graph
-    embedding_size = 64
+    embedding_size = 128
     approximation_order = 4 # only used to check moments
     tree = cKDTree(coordinates)
-    model_x, _ = load_gnn('./gnn/trained_model', 13, model_class='a_gnn') # model for x derivative
-    model_laplace, _ = load_gnn('./gnn/trained_model', 6, model_class='a_gnn')  # model for x derivative
+    model_x, _ = load_gnn('./gnn/trained_model', 13, model_class='sna_gnn',
+                          full_path='gnn/trained_model/attrs22_epoch373.pth') # model for x derivative
+    model_laplace, _ = load_gnn('./gnn/trained_model', 6, model_class='sna_gnn',
+                                full_path='gnn/trained_model/attrs22_epoch373.pth')  # model for x derivative
 
     ref_node_ls = []
     neigh_coor_dict = {}
@@ -50,7 +52,7 @@ def gnn_weights(coordinates, h, total_nodes):
                               h=h_np)
 
     data_loader = DataLoader(ds,
-                             batch_size=features_np.shape[0],
+                             batch_size=min(features_np.shape[0],1024),
                              shuffle=False,
                              num_workers=0,
                              drop_last=False)
