@@ -6,7 +6,7 @@ from functions.labfm_operator import calc_weights
 from functions.gnn_operator import gnn_weights
 from functions.p_test_function import (test_function, dif_analytical, laplace_phi, dif_do,
                                        deriv_sph, lap_sph_standard, lap_moris)
-from functions.f_test_function import resolving_power
+from functions.res_power import resolving_power
 
 
 class AbstractBaseClass:
@@ -71,7 +71,7 @@ class LABFM(AbstractBaseClass):
         self.polynomial_test_function_method()
         self.approx_diff_op()
         self.calc_l2()
-        #self.r_power()
+        self.r_power()
 
 
 class GNN(AbstractBaseClass):
@@ -80,7 +80,8 @@ class GNN(AbstractBaseClass):
         super().__init__(total_nodes, 'gnn')
         (self.x,
          self.laplace,
-         self._neigh_coor) = gnn_weights(self.coordinates, self.h, self.total_nodes)
+         self._neigh_coor,
+         self.node_h) = gnn_weights(self.coordinates, self.h, self.total_nodes)
         self.polynomial_test_function_method()
         self.approx_diff_op()
         self.calc_l2()
@@ -101,7 +102,7 @@ class WLandC2(AbstractBaseClass):
         self.polynomial_test_function_method()
         self.approx_diff_op_sph()
         self.calc_l2()
-        #self.r_power()
+        self.r_power()
 
 
 class QSPline(AbstractBaseClass):
