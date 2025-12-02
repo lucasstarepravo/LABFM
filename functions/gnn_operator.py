@@ -1,4 +1,4 @@
-from gnn.graph_constructor import StencilGraph
+from gnn.graph_constructor import StencilGraph, DenseGraph
 from torch_geometric.loader import DataLoader
 from gnn.preproc import load_gnn
 import torch
@@ -19,14 +19,15 @@ def gnn_weights(coordinates, h, total_nodes):
     embedding_size = 128
     approximation_order = 4 # only used to check moments
     tree = cKDTree(coordinates)
-    model_x, _ = load_gnn('./gnn/trained_model', 13, model_class='sna_gnn',
-                          full_path='gnn/trained_model/attrs22_epoch373.pth') # model for x derivative
-    model_laplace, _ = load_gnn('./gnn/trained_model', 6, model_class='sna_gnn',
-                                full_path='gnn/trained_model/attrs22_epoch373.pth')  # model for x derivative
+    model_x, _ = load_gnn('./gnn/trained_model', 13, model_class='n_gnn',
+                          full_path='gnn/trained_model/attrs23_epoch25.pth') # model for x derivative
+    model_laplace, _ = load_gnn('./gnn/trained_model', 6, model_class='n_gnn',
+                                full_path='gnn/trained_model/attrs23_epoch25.pth')  # model for x derivative
 
     ref_node_ls = []
     neigh_coor_dict = {}
     norm_h = []
+    h_dict = {}
 
     for ref_x, ref_y in tqdm(coordinates, desc="Creating GNN dataset " + str(total_nodes), ncols=100):
         if ref_x > 0.5 or ref_x < -0.5 or ref_y > 0.5 or ref_y < -0.5: continue
@@ -41,15 +42,20 @@ def gnn_weights(coordinates, h, total_nodes):
 
         max_r = np.max(neigh_r_d)           # obtaining maximum radius for normalisation
         norm_h.append(max_r)                # saving max radius to denormalize predictions
+        h_dict[ref_node] = max_r
         features.append(neigh_xy_d/max_r)   # appending normalised features to list
 
 
     features_np = np.array(features)        # converting to numpy array
     h_np = np.array(norm_h)
     #features_np /= h
-    ds = StencilGraph(features=features_np, # need to input h as normalisation
-                              embedding_size=embedding_size,
-                              h=h_np)
+    #ds = StencilGraph(features=features_np, # need to input h as normalisation
+    #                          embedding_size=embedding_size,
+    #                          h=h_np)
+
+    ds = DenseGraph(features=features_np,
+                    embedding_size=embedding_size,
+                    h=h_np)
 
     data_loader = DataLoader(ds,
                              batch_size=min(features_np.shape[0],1024),
@@ -70,12 +76,10 @@ def gnn_weights(coordinates, h, total_nodes):
         for batch in tqdm(data_loader, desc="Predicting GNN Weights for " + str(total_nodes), ncols=100):
             out_x = model_x(batch.x,
                             batch.edge_index,
-                            batch.edge_attr,
                             batch.batch)
 
             out_laplace = model_laplace(batch.x,
                                         batch.edge_index,
-                                        batch.edge_attr,
                                         batch.batch)
 
             #pred_m = calc_moments_torch(batch.distances,
@@ -103,5 +107,5 @@ def gnn_weights(coordinates, h, total_nodes):
         weights_x_dict[key] = x
         weights_laplace_dict[key] = lap
 
-    return weights_x_dict, weights_laplace_dict, neigh_coor_dict
+    return weights_x_dict, weights_laplace_dict, neigh_coor_dict, h_dict
 
