@@ -56,6 +56,7 @@ def plot_stability(results: dict,
     if diff_operator == 'dy': weights = attrs.y
     if diff_operator == 'laplace': weights = attrs.laplace
 
+    h = attrs.h
     # extracting coordinates from attributes
     coor = attrs.coordinates
     neigh_coor = attrs._neigh_coor
@@ -65,19 +66,31 @@ def plot_stability(results: dict,
 
     coord_to_idx = {tuple(x): i for i, x in enumerate(coor)}
 
-    #surf_val_ls = list(surface_value.values())
 
-    for i in range(len(coor)):
-        loc = coor[i]
-        if tuple(loc) not in weights.keys(): continue
+    if isinstance(h, dict):
+        for i in range(len(coor)):
+            loc = coor[i]
+            if tuple(loc) not in weights.keys(): continue
 
-        for j in range(neigh_coor[tuple(loc)].shape[0]):
-            n_j = neigh_coor[tuple(loc)][j]
-            neigh_idx = coord_to_idx[tuple(n_j)]
-            A[i, neigh_idx] = np.array(weights[tuple(loc)][j])
+            for j in range(neigh_coor[tuple(loc)].shape[0]):
+                n_j = neigh_coor[tuple(loc)][j]
+                neigh_idx = coord_to_idx[tuple(n_j)]
+                A[i, neigh_idx] = np.array(weights[tuple(loc)][j] * h[tuple(loc)])
 
-        A[i, i] = 0
-        A[i, i] = - np.sum(A[i, :])
+            A[i, i] = 0
+            A[i, i] = - np.sum(A[i, :])
+    else:
+        for i in range(len(coor)):
+            loc = coor[i]
+            if tuple(loc) not in weights.keys(): continue
+
+            for j in range(neigh_coor[tuple(loc)].shape[0]):
+                n_j = neigh_coor[tuple(loc)][j]
+                neigh_idx = coord_to_idx[tuple(n_j)]
+                A[i, neigh_idx] = np.array(weights[tuple(loc)][j]*h)
+
+            A[i, i] = 0
+            A[i, i] = - np.sum(A[i, :])
 
     A_masked = np.ma.masked_values(A, 0)
     A_sparse = csr_matrix(A)
@@ -118,13 +131,12 @@ def plot_resolving_p(results, kernel, resolution, size=20):
     y1 = res_power[:, 0]  # first column
     y2 = res_power[:, 1]  # second column
     x = res_power[:, 2]  # third column
-    norm = np.max(x)
 
     # (Optional) sort by x so lines look nice
     idx = np.argsort(x)
-    x_sorted = x[idx] #/ norm
-    y1_sorted = y1[idx] #/ norm
-    y2_sorted = y2[idx] #/ norm
+    x_sorted = x[idx]
+    y1_sorted = y1[idx]
+    y2_sorted = y2[idx]
 
     # ---------- Figure 1 ----------
     # y-axis: first column
