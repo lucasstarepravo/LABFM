@@ -24,10 +24,10 @@ def resolving_power(w: dict,
     samples = np.linspace(0, 1, k_samples)
 
     # Fixed wavenumber
-    theta = 0 # np.linspace(0, pi, 3)
+    theta = 0.785398 # np.linspace(0, pi, 3)
 
     # Scaled sampled Nyquist wavenumber
-    k_scaled = samples * k_ny
+    k_scaled = samples[1:] * k_ny
 
     # Scaling fixed wavenumbers by sampled Nyquist wavenumber
     # essentially chooses how much of the total wave number is in the real (x dim) or imaginary (y dim) part
@@ -46,13 +46,13 @@ def resolving_power(w: dict,
 
     # Computing ||k||, although I don't actually use it so that k_hat and k_eff range from [0,1]
     k = np.sqrt(k_x ** 2 + k_y ** 2)
+    #k = k_scaled
 
     # Normalising k to be [0,1]
-    k_hat = k * k_x / k_ny #* k_x
-    #k_hat = k_x / k_ny  # * k_x
+    #k_hat = k / k_ny #* k_x
 
     # looping over each sample in k_x
-    for i in tqdm(range(len(k_x)), desc="Processing k_x"):
+    for i in tqdm(range(len(k)), desc="Processing k_x"):
         tmp = []
         # loops over each node that will be used to compute the resolving power
         for c_node in coor_to_test:
@@ -60,22 +60,24 @@ def resolving_power(w: dict,
             S_sin, S_cos = 0, 0                   # initialise the real and imaginary parts of k_eff
             # loops over each neighbour of a central node
             for j, neigh in enumerate(n_dist):
-                eta = k_x[i] * neigh[0] + k_y[i] * neigh[1]         # computes eta = (k_x * x_ji + k_y * y_ji)
+                eta = k[i] * neigh[0] + k_y[i] * neigh[1]         # computes eta = (k_x * x_ji + k_y * y_ji)
                 S_sin += np.sin(eta) * w[tuple(c_node)][j]          # computes sin(eta) * w_ji
                 S_cos += (1 - np.cos(eta)) * w[tuple(c_node)][j]    # computes (1 - cos(eta)) * w_ji
 
             # normalises the sum of the real and imaginary parts by k_ny
-            R = S_sin * k[i] / k_ny
-            I = S_cos * k[i]/ k_ny
+            R = S_sin / k[-1]
+            I = S_cos / k[-1]
+            #R = S_sin / k[-1]
 
             # below some data structuring
-            tmp.append([R, I, k_hat[i]])
+            tmp.append([R, I, k[i] / k[-1]])
+            #tmp.append([R, k[i] / k[-1]])
 
         k_final.append(tmp)
 
     k_final = np.array(k_final)
     k_tmp   = np.sqrt(np.mean(k_final[..., :-1] ** 2, axis=1))
-    k_final = np.concat((k_tmp, k_final[:, 0, -1][:, None]), axis=1) # averaging for all nodes
+    k_final = np.concatenate((k_tmp, k_final[:, 0, -1][:, None]), axis=1) # averaging for all nodes
 
 
     return k_final
