@@ -8,6 +8,84 @@ from torch_geometric.data.data import BaseData
 from tqdm import tqdm
 
 
+class DenseGraph(Dataset):
+    def __init__(self,
+                 features,
+                 embedding_size,
+                 h,
+                 transform=None,
+                 pre_transform=None,
+                 pre_filter=None):
+
+        self.features  = np.ascontiguousarray(features).astype(np.float32, copy=False)
+        self.h = np.ascontiguousarray(h).astype(np.float32, copy=False)
+
+        self.total_datapoints = features.shape[0] # num of nodes in domain
+        self.max_neighbours = self.features.shape[1] # max number of neighbours
+        self.embedding_size = embedding_size
+
+        # prebuild once
+        ls = []
+        for i in range(self.max_neighbours):
+            for j in range(self.max_neighbours):
+                if i == j: continue
+                ls.append([i,j])
+
+        self.edges_max = torch.tensor(ls, dtype=torch.long).T
+
+        #self.transform = ToUndirected()
+        super().__init__(transform, pre_transform, pre_filter, log=False)
+
+    def len(self) -> int:
+        return self.total_datapoints
+
+    def get(self, idx: int) -> BaseData:
+        return self.data[idx]
+
+    def processed_file_names(self) -> Union[str, List[str], Tuple[str, ...]]:
+        return 'hello'
+
+    def process(self):
+        data_list = []
+
+        for idx in range(self.total_datapoints):
+
+            # edge features and label
+            # removing the central weight node
+            #num_neigh = self.distances[d_idx, 1:, 0][torch.isfinite(self.distances[d_idx, 1:, 0])]
+            # removing the distance of the central node to itself (0.0)
+            #edge_attr = self.features[idx, 1:, :]
+            distances = torch.from_numpy(self.features[idx, ...].copy()).to(torch.float32)
+
+            # creating edge attributes
+            # (distance from neighbour points to central point, and from central point to neighbour points)
+            #edge_attr = torch.from_numpy(edge_attr.copy()).to(torch.float32)
+            #rev_edge_attr = -edge_attr
+            #edge_attr = torch.concat((edge_attr, rev_edge_attr))
+
+            # slice down to actual degree
+            #num_neigh = edge_attr.shape[0]
+            edge_index = self.edges_max
+            #tmp = [1,0]
+            #rev_edge_index = edge_index[tmp, :]
+            #edge_index = torch.concat((edge_index, rev_edge_index), dim=1)
+            x = torch.from_numpy(self.features[idx].copy()).to(torch.float32)
+            #x = torch.ones((self.features.shape[1], 1), dtype=torch.float32)
+            #x[0, :] = 1 / (x.shape[0] ** .5)
+
+            w_norm = torch.tensor(self.h[idx], dtype=torch.float32)
+
+            data = Data(x=x,
+                        distances=distances,
+                        edge_index=edge_index,
+                        h=w_norm)
+
+
+            data_list.append(data)
+
+        self.data = data_list
+
+
 class StencilGraph(Dataset):
     def __init__(self,
                  features,
