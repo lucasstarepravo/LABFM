@@ -33,10 +33,10 @@ def plot_stability(results: dict,
     print('Computing eigenvalues')
     # (results, model_or_polynomial, resolution, diff_operator)
 
-    if kernel not in [2, 4, 5, 8, 'gnn', 'wc2', 'quintic_s']:
+    if kernel not in [2, 4, 5, 8, 'gnn', 'wc2', 'q_s']:
         raise ValueError("Value of the kernel should either be a LABFM polynomial"
                          " in results one of the following kernels 'gnn', 'wc2' "
-                         "'quintic_s'")
+                         "'q_s'")
 
 
     if diff_operator not in ['dx', 'dy', 'laplace']:
@@ -96,14 +96,15 @@ def plot_stability(results: dict,
     A_sparse = csr_matrix(A)
 
 
-    kernel_plot_title = {'quintic_s': 'Quintic Spline',
-                   'wc2': 'Wendland C2',
-                   'gnn': 'GNN',
-                   2: 'LABFM $2^{\mathrm{nd}}$ Order',
-                   4: 'LABFM $4^{\mathrm{th}}$ Order',
-                   6: 'LABFM $6^{\mathrm{th}}$ Order',
-                   8: 'LABFM $8^{\mathrm{th}}$ Order'
-                   }
+    kernel_plot_title = {
+        'q_s': 'Quintic Spline',
+        'wc2': 'Wendland C2',
+        'gnn': 'GNN',
+        2: r'LABFM $2^{\mathrm{nd}}$ Order',
+        4: r'LABFM $4^{\mathrm{th}}$ Order',
+        6: r'LABFM $6^{\mathrm{th}}$ Order',
+        8: r'LABFM $8^{\mathrm{th}}$ Order',
+    }
 
     vals = np.linalg.eigvals(A)
 
@@ -174,7 +175,7 @@ def plot_convergence(results, derivative='dx', size=20):
     # Dynamically populate poly_data based on available polynomial degrees in results
     for k, v in results.items():
         poly_degree = k[1]
-        if poly_degree in [2, 4, 6, 8, 'quintic_s', 'wc2', 'gnn']:  # Check if the degree is one of the interest
+        if poly_degree in [2, 4, 6, 8, 'q_s', 'wc2', 'gnn']:  # Check if the degree is one of the interest
             _poly_degree.add(poly_degree)
             if poly_degree not in poly_data:
                 poly_data[poly_degree] = {'s': [], 'l2': []}
@@ -186,9 +187,9 @@ def plot_convergence(results, derivative='dx', size=20):
 
     # Plotting
     colors = {2: 'blue', 4: 'red', 6: 'green', 8: 'black',
-              'quintic_s': 'purple', 'gnn': 'orange', 'wc2': 'cyan'}
+              'q_s': 'purple', 'gnn': 'orange', 'wc2': 'cyan'}
     labels = {2: 'Polynomial = 2', 4: 'Polynomial = 4', 6: 'Polynomial = 6', 8: 'Polynomial = 8',
-              'quintic_s': 'Quintic Spline', 'gnn': 'GNN', 'wc2': 'Wendland C${2}$'}
+              'q_s': 'Quintic Spline', 'gnn': 'GNN', 'wc2': 'Wendland C${2}$'}
 
     for poly_degree, data in poly_data.items():
         s = np.array(data['s'])

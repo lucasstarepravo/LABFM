@@ -8,8 +8,8 @@ from functions.plot import plot_kernel
 def wendland_c2_sph(neighbours_r, h):
     q = neighbours_r/h
 
-    if (q < 0).any():
-        raise ValueError("r must be >= 0")
+    if (q < 0).any() or (q > 2).any():
+        raise ValueError("r must be >0 and <=2")
 
     w_ji = (7/(math.pi*h**2) ) * (1 - q)**4 * (1 + 4 * q)
     return w_ji
@@ -17,9 +17,8 @@ def wendland_c2_sph(neighbours_r, h):
 def wendland_c2_deriv_rad(neighbours_r, h):
     q = neighbours_r/h
 
-    if (q < 0).any():
-        raise ValueError("r must be >= 0")
-
+    if (q < 0).any() or (q > 2).any():
+        raise ValueError("r must be >0 and <=2")
 
     c = (-140 * neighbours_r)/(math.pi * h**4)
     w_ji = c * (1 - q) ** 3
@@ -30,9 +29,8 @@ def wendland_c2_deriv(neighbours_r, neigh_xy_d, h, deriv):
         raise ValueError("deriv must be either 'dx' or 'dy'")
 
     q = neighbours_r / h
-    if (q < 0).any():
-        raise ValueError("r must be >= 0")
-
+    if (q < 0).any() or (q > 2).any():
+        raise ValueError("r must be >0 and <=2")
 
     deriv = deriv.lower()
     if deriv == 'dx':
@@ -49,8 +47,8 @@ def wendland_c2_deriv(neighbours_r, neigh_xy_d, h, deriv):
 
 def wendland_c2_laplacian(neighbours_r, h):
     q = neighbours_r/h
-    if (q < 0).any():
-        raise ValueError("r must be >= 0")
+    if (q < 0).any() or (q > 2).any():
+        raise ValueError("r must be >0 and <=2")
 
     c = (-140/(math.pi * h ** 4))
 
@@ -67,8 +65,8 @@ def wendlandc2_weights(coordinates, h, total_nodes):
     density_dict    = {}
     weights_x       = {}
     weights_y       = {}
-    weights_laplace = {}
-    weights_r       = {}
+    #weights_laplace = {}
+    #weights_r       = {}
 
     support_radius = 2 * h
     #plot_xy = []
@@ -93,11 +91,11 @@ def wendlandc2_weights(coordinates, h, total_nodes):
         neigh_r_dict[ref_node] = neigh_r_d
         weights_x[ref_node] = wendland_c2_deriv(neigh_r_d, neigh_xy_d, support_radius, 'dx')
         weights_y[ref_node] = wendland_c2_deriv(neigh_r_d, neigh_xy_d, support_radius, 'dy')
-        weights_laplace[ref_node] = wendland_c2_laplacian(neigh_r_d, support_radius)
-        weights_r[ref_node] = wendland_c2_deriv_rad(neigh_r_d, support_radius)
+        #weights_laplace[ref_node] = wendland_c2_laplacian(neigh_r_d, support_radius)
+        #weights_r[ref_node] = wendland_c2_deriv_rad(neigh_r_d, support_radius)
 
     #plot_xy_np = np.array(plot_xy)
     #plot_xy_np /= support_radius
     #plot_kernel(plot_xy_np)
 
-    return weights_x, weights_y, weights_laplace, weights_r, density_dict, neigh_coor_dict, neigh_r_dict, neigh_xy_dist
+    return weights_x, weights_y, density_dict, neigh_coor_dict, neigh_r_dict, neigh_xy_dist#, weights_laplace, weights_r

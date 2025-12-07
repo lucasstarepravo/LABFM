@@ -129,23 +129,23 @@ def lap_moris(neigh_coor, neigh_r, x_w, y_w, neigh_dist, rho, h, surface_value):
     # values of viscosity
     v1_plus_v2 = 2
     dif_approx = {}
-    epsilon = (0.001 * h)**2
+    epsilon = 0 #(0.001 * h)**2
 
     for ref_node in neigh_coor:
         x = ref_node[0]
         y = ref_node[1]
-        if x > 0.5 or x < -0.5 or y > 0.5 or y < -0.5:
-            continue
+        if x > 0.5 or x < -0.5 or y > 0.5 or y < -0.5: continue
         temp_ls = []
         for i in range(neigh_coor[ref_node].shape[0]):
             nn = neigh_coor[ref_node][i]
 
-            surface_diff = surface_value[tuple(nn)] - surface_value[ref_node]
+            surface_diff = -(surface_value[tuple(nn)] - surface_value[ref_node])
             term_x = neigh_dist[ref_node][i][0] * x_w[ref_node][i]
             term_y = neigh_dist[ref_node][i][1] * y_w[ref_node][i]
             denominator = rho[tuple(nn)] * (neigh_r[ref_node][i] ** 2 + epsilon)
+            den_mask = denominator > 0
 
-            surface_diff = ((term_x + term_y) / denominator) * surface_diff
+            surface_diff = (2*(term_x + term_y) / denominator) * surface_diff if den_mask else 0
 
             temp_ls.append(surface_diff)
 

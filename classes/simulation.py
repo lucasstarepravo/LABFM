@@ -71,7 +71,7 @@ class LABFM(AbstractBaseClass):
         self.polynomial_test_function_method()
         self.approx_diff_op()
         self.calc_l2()
-        self.r_power()
+        #self.r_power()
 
 
 class GNN(AbstractBaseClass):
@@ -85,6 +85,7 @@ class GNN(AbstractBaseClass):
         self.polynomial_test_function_method()
         self.approx_diff_op()
         self.calc_l2()
+        #self.r_power()
 
 
 class WLandC2(AbstractBaseClass):
@@ -93,8 +94,6 @@ class WLandC2(AbstractBaseClass):
         super().__init__(total_nodes, 'wc2')
         (self.x,
          self.y,
-         self.laplace,
-         self.r,
          self.rho,
          self._neigh_coor,
          self._neigh_r,
@@ -102,21 +101,21 @@ class WLandC2(AbstractBaseClass):
         self.polynomial_test_function_method()
         self.approx_diff_op_sph()
         self.calc_l2()
-        self.r_power()
+        #self.r_power()
 
 
 class QSPline(AbstractBaseClass):
     def __init__(self, total_nodes):
         self.s = 1.0 / (total_nodes - 1)
-        super().__init__(total_nodes, 'quintic_s')
+        super().__init__(total_nodes, 'q_s')
         (self.x,
          self.y,
-         self.laplace,
          self.rho,
          self._neigh_coor,
-         self._neigh_r) = qspline_weights(self.coordinates, self.h, self.total_nodes)
+         self._neigh_r,
+         self._neigh_xy) = qspline_weights(self.coordinates, self.h, self.total_nodes)
         self.polynomial_test_function_method()
-        self.approx_diff_op_sph(moris_op=False)
+        self.approx_diff_op_sph()
         self.calc_l2()
 
 
@@ -128,11 +127,11 @@ def run(total_nodes_list, kernel_list):
         # restructure the classes to have the weights in here as just .x .y .laplace
         args = (total_nodes,)
         if k in [2, 4, 6, 8]: kernel, args = LABFM, (k, total_nodes)
-        elif k == 'quintic_s': kernel = QSPline
+        elif k == 'q_s': kernel = QSPline
         elif k == 'wc2': kernel = WLandC2
         elif k == 'gnn': kernel = GNN
         else: raise ValueError(" kernel must be either polynomial order for labfm (2, 4, 6, 8), or one of "
-                               "the following kernels 'wc2', 'quintic_s', 'gnn'")
+                               "the following kernels 'wc2', '_s', 'gnn'")
 
         sim = kernel(*args)
         result[(total_nodes, k)] = sim

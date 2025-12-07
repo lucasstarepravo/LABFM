@@ -16,13 +16,13 @@ def gnn_weights(coordinates, h, total_nodes):
     # used to gather all features, later will all be passed to GNN
     features = []
     # needed to construct graph
-    embedding_size = 128
+    embedding_size = 256
     approximation_order = 4 # only used to check moments
     tree = cKDTree(coordinates)
     model_x, _ = load_gnn('./gnn/trained_model', 13, model_class='n_gnn',
-                          full_path='gnn/trained_model/attrs23_epoch25.pth') # model for x derivative
+                          full_path='gnn/trained_model/attrs28_epoch298.pth') # model for x derivative
     model_laplace, _ = load_gnn('./gnn/trained_model', 6, model_class='n_gnn',
-                                full_path='gnn/trained_model/attrs23_epoch25.pth')  # model for x derivative
+                                full_path='gnn/trained_model/attrs28_epoch298.pth')  # model for x derivative
 
     ref_node_ls = []
     neigh_coor_dict = {}
@@ -36,9 +36,9 @@ def gnn_weights(coordinates, h, total_nodes):
         ref_node_ls.append(ref_node)
         neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates,
                                                                                   ref_node,
-                                                                                  2 * h,
+                                                                                  3 * h,
                                                                                   tree,
-                                                                                  max_neighbors=35)
+                                                                                  max_neighbors=60)
 
         max_r = np.max(neigh_r_d)           # obtaining maximum radius for normalisation
         norm_h.append(max_r)                # saving max radius to denormalize predictions

@@ -86,6 +86,7 @@ def qspline_weights(coordinates, h, total_nodes):
 
     neigh_r_dict    = {}
     neigh_coor_dict = {}
+    neigh_xy_dist   = {}
     density_dict    = {}
     weights_x       = {}
     weights_y       = {}
@@ -108,10 +109,11 @@ def qspline_weights(coordinates, h, total_nodes):
         density_dict[ref_node] = np.ones(shape=neigh_r_d.shape) @ quintic_spline(neigh_r_d, h)
         if ref_x > 0.5 or ref_x < -0.5 or ref_y > 0.5 or ref_y < -0.5: continue
 
+        neigh_xy_dist[ref_node] = neigh_xy_d
         neigh_r_dict[ref_node] = neigh_r_d
         weights_x[ref_node] = quintic_spline_deriv(neigh_r_d, neigh_xy_d, h, 'dx')
         weights_y[ref_node] = quintic_spline_deriv(neigh_r_d, neigh_xy_d, h, 'dy')
-        weights_laplace[ref_node] = quintic_spline_laplace(neigh_r_d, h)
+        #weights_laplace[ref_node] = quintic_spline_laplace(neigh_r_d, h)
 
 
-    return weights_x, weights_y, weights_laplace, density_dict, neigh_coor_dict, neigh_r_dict
+    return weights_x, weights_y, density_dict, neigh_coor_dict, neigh_r_dict, neigh_xy_dist

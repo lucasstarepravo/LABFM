@@ -15,7 +15,8 @@ class DenseGraph(Dataset):
                  h,
                  transform=None,
                  pre_transform=None,
-                 pre_filter=None):
+                 pre_filter=None,
+                 dense_graph=False):
 
         self.features  = np.ascontiguousarray(features).astype(np.float32, copy=False)
         self.h = np.ascontiguousarray(h).astype(np.float32, copy=False)
@@ -25,13 +26,17 @@ class DenseGraph(Dataset):
         self.embedding_size = embedding_size
 
         # prebuild once
-        ls = []
-        for i in range(self.max_neighbours):
-            for j in range(self.max_neighbours):
-                if i == j: continue
-                ls.append([i,j])
-
-        self.edges_max = torch.tensor(ls, dtype=torch.long).T
+        if dense_graph:
+            ls = []
+            for i in range(self.max_neighbours):
+                for j in range(self.max_neighbours):
+                    if i == j: continue
+                    ls.append([i,j])
+            self.edges_max = torch.tensor(ls, dtype=torch.long).T
+        else:
+            self.edges_max = torch.tensor(
+                [[i, 0] for i in range(1, self.max_neighbours)],
+                dtype=torch.long).T
 
         #self.transform = ToUndirected()
         super().__init__(transform, pre_transform, pre_filter, log=False)
@@ -55,7 +60,6 @@ class DenseGraph(Dataset):
             #num_neigh = self.distances[d_idx, 1:, 0][torch.isfinite(self.distances[d_idx, 1:, 0])]
             # removing the distance of the central node to itself (0.0)
             #edge_attr = self.features[idx, 1:, :]
-            distances = torch.from_numpy(self.features[idx, ...].copy()).to(torch.float32)
 
             # creating edge attributes
             # (distance from neighbour points to central point, and from central point to neighbour points)
@@ -66,9 +70,9 @@ class DenseGraph(Dataset):
             # slice down to actual degree
             #num_neigh = edge_attr.shape[0]
             edge_index = self.edges_max
-            #tmp = [1,0]
-            #rev_edge_index = edge_index[tmp, :]
-            #edge_index = torch.concat((edge_index, rev_edge_index), dim=1)
+            tmp = [1,0]
+            rev_edge_index = edge_index[tmp, :]
+            edge_index = torch.concat((edge_index, rev_edge_index), dim=1)
             x = torch.from_numpy(self.features[idx].copy()).to(torch.float32)
             #x = torch.ones((self.features.shape[1], 1), dtype=torch.float32)
             #x[0, :] = 1 / (x.shape[0] ** .5)
@@ -76,7 +80,6 @@ class DenseGraph(Dataset):
             w_norm = torch.tensor(self.h[idx], dtype=torch.float32)
 
             data = Data(x=x,
-                        distances=distances,
                         edge_index=edge_index,
                         h=w_norm)
 

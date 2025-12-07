@@ -171,7 +171,7 @@ class SNAMessagePassingGNN(nn.Module):
             nn.Linear(embedding_size // 2, embedding_size // 4),
             nn.Tanh()
         )
-        reset_params(self.decoder1, 'Tanh')
+        reset_params(self.decoder1, 'tanh')
 
         self.decoder2 = nn.Sequential(nn.Linear(embedding_size // 4, 1))
 

@@ -25,17 +25,17 @@ def h_to_nn(s: float, nn: int, H_by_h: float) -> float:
 def calc_h(s: float, kernel: int | str) -> float:
     # This determines the smoothing scale
 
-    if   kernel == 2: h = 1.5 * s
+    if   kernel == 2: h = 2.0 * s
     elif kernel == 4: h = 1.9 * s
     elif kernel == 6: h = 2.3 * s
     elif kernel == 8: h = 2.7 * s
     elif kernel == 'wc2': h = h_to_nn(s, 100, H_by_h=1.897367)
-    elif kernel == 'quintic_s': h = h_to_nn(s, 180, H_by_h=2.158131)
+    elif kernel == 'q_s': h = h_to_nn(s, 180, H_by_h=2.158131)
     elif kernel == 'gnn': h = 2.3 * s
 
     else:
         raise ValueError("The kernel argument must be in (2, 4, 6, 8), or one of "
-                         "the following 'wc2', 'quintic_s', 'gnn'")
+                         "the following 'wc2', 'q_s', 'gnn'")
     return h
 
 
