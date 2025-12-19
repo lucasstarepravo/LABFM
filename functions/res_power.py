@@ -9,7 +9,7 @@ def resolving_power(w: dict,
                     neigh_dist_xy: dict,
                     n_samples: int,
                     k_samples: int = 100
-                    ) -> (dict, dict):
+                    ) ->  dict:
 
     pi = np.pi
 
@@ -24,7 +24,7 @@ def resolving_power(w: dict,
     samples = np.linspace(0, 1, k_samples)
 
     # Fixed wavenumber
-    theta = 0.785398 # np.linspace(0, pi, 3)
+    theta = 0 # 0.785398 # np.linspace(0, pi, 3)
 
     # Scaled sampled Nyquist wavenumber
     k_scaled = samples[1:] * k_ny

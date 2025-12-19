@@ -80,6 +80,7 @@ def plot_stability(results: dict,
             A[i, i] = 0
             A[i, i] = - np.sum(A[i, :])
     else:
+        if kernel in ['wc2', 'q_s']: h = h ** 3
         for i in range(len(coor)):
             loc = coor[i]
             if tuple(loc) not in weights.keys(): continue

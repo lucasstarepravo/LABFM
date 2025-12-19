@@ -14,7 +14,8 @@ class AbstractBaseClass:
         # global variables used for all approximations
         self.s              = 1.0 / (total_nodes - 1)
         self.h              = calc_h(self.s, kernel)
-        self.coordinates    = create_nodes(total_nodes, self.s, self.h)
+        (self.coordinates,
+         self.nodes_in_domain)  = create_nodes(total_nodes, self.s, self.h)
         self.total_nodes    = total_nodes
 
 
@@ -81,7 +82,8 @@ class GNN(AbstractBaseClass):
         (self.x,
          self.laplace,
          self._neigh_coor,
-         self.node_h) = gnn_weights(self.coordinates, self.h, self.total_nodes)
+         self.node_h,
+         self._neigh_xy) = gnn_weights(self.coordinates, self.h, self.total_nodes, self.nodes_in_domain)
         self.polynomial_test_function_method()
         self.approx_diff_op()
         self.calc_l2()

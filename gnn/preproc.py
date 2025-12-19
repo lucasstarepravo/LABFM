@@ -1,6 +1,6 @@
 from gnn.MessageGNN import MessagePassingGNN
 from gnn.AttenGNN import AMessagePassingGNN
-from gnn.SNA_GNN import SNAMessagePassingGNN
+from gnn.SNA_GNN import csf_gnn
 from gnn.Node_GNN import NodeMessagePassingGNN
 import logging
 import pickle as pk
@@ -42,7 +42,7 @@ def load_gnn(model_path, model_id, model_class='gnn', full_path=''):
         model_instance = NodeMessagePassingGNN(embedding_size=embedding_size,
                                            layers=layers)
     else:
-        model_instance = SNAMessagePassingGNN(embedding_size=embedding_size,
+        model_instance = csf_gnn(embedding_size=embedding_size,
                                             layers=layers)
 
     weight_dict = OrderedDict()

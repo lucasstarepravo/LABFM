@@ -69,7 +69,12 @@ def create_nodes(total_nodes: int, s: float, h: float) -> NDArray:
     coordinates = np.column_stack((X.ravel(), Y.ravel()))
     coordinates = np.around(coordinates, 15)
 
-    return coordinates
+    nodes_in_domain = 0
+    for ref_x, ref_y in coordinates:
+        if ref_x > 0.5 or ref_x < -0.5 or ref_y > 0.5 or ref_y < -0.5: continue
+        nodes_in_domain += 1
+
+    return coordinates, nodes_in_domain
 
 
 def neighbour_nodes_kdtree(coordinates, ref_node, h, tree, max_neighbors=1000):
