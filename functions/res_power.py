@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import ndarray
 from tqdm import tqdm
 
 # what you need
@@ -6,6 +7,7 @@ from tqdm import tqdm
 # location of the central node and its neighbours
 def resolving_power(w: dict,
                     s: float,
+                    sph,
                     neigh_dist_xy: dict,
                     n_samples: int,
                     k_samples: int = 100
@@ -60,13 +62,13 @@ def resolving_power(w: dict,
             S_sin, S_cos = 0, 0                   # initialise the real and imaginary parts of k_eff
             # loops over each neighbour of a central node
             for j, neigh in enumerate(n_dist):
-                eta = k[i] * neigh[0] + k_y[i] * neigh[1]         # computes eta = (k_x * x_ji + k_y * y_ji)
-                S_sin += np.sin(eta) * w[tuple(c_node)][j]          # computes sin(eta) * w_ji
+                eta = k_x[i] * neigh[0] + k_y[i] * neigh[1]         # computes eta = (k_x * x_ji + k_y * y_ji)
+                S_sin += (np.sin(eta) * w[tuple(c_node)][j])          # computes sin(eta) * w_ji
                 S_cos += (1 - np.cos(eta)) * w[tuple(c_node)][j]    # computes (1 - cos(eta)) * w_ji
 
             # normalises the sum of the real and imaginary parts by k_ny
-            R = S_sin / k[-1]
-            I = S_cos / k[-1]
+            R = S_sin / k[-1] if not sph else S_sin / k[-1] ** 3
+            I = S_cos / k[-1] if not sph else S_cos / k[-1] ** 3
             #R = S_sin / k[-1]
 
             # below some data structuring
@@ -79,5 +81,81 @@ def resolving_power(w: dict,
     k_tmp   = np.sqrt(np.mean(k_final[..., :-1] ** 2, axis=1))
     k_final = np.concatenate((k_tmp, k_final[:, 0, -1][:, None]), axis=1) # averaging for all nodes
 
-
     return k_final
+
+def resolving_power2(w_x: dict,
+                     w_l: dict,
+                     w_y: dict,
+                    s: float,
+                    sph_bool: bool,
+                    neigh_dist_xy: dict,
+                    neigh_r: dict,
+                    n_samples: int,
+                    rho: None | dict = None,
+                    neigh_coor: None | dict = None,
+                    ) ->  dict:
+
+    pi = np.pi
+    k_ny = pi / s
+
+    k = np.arange(start=1, stop=int(k_ny), step=2, dtype=np.float32)
+
+    # Sampling nodes from domain to do resolving power analysis
+    rng = np.random.default_rng(42)
+    ls = list(neigh_dist_xy.keys())
+    ls = np.array(ls)
+    n_samples = min(n_samples, len(w_x))
+    coor_idx = rng.choice(len(ls), size=n_samples, replace=False)
+    coor_to_test = ls[coor_idx]
+
+    # Normalising k to be [0,1]
+    #k_hat = k / k_ny #* k_x
+    x_res = []
+    lap_res = []
+    # looping over each sample in k_x
+    for i in tqdm(range(len(k)), desc="Processing k_x"):
+        l2_x = 0
+        l2_l = 0
+
+        # loops over each node that will be used to compute the resolving power
+        for c_node in coor_to_test:
+            n_dist = neigh_dist_xy[tuple(c_node)] # obtains the x and y distances of all neighbours of the node
+            gsum = 0
+            lsum = 0
+            # loops over each neighbour of a central node
+            for j, neigh in enumerate(n_dist):
+                fji = np.sin(k[i] * neigh[0])
+
+                if sph_bool:
+                    neigh_coor_s = neigh_coor[tuple(c_node)][j]
+                    rho_neigh = rho[tuple(neigh_coor_s)]
+                    gsum = gsum + (fji * w_x[tuple(c_node)][j] / rho_neigh)
+
+                    # Moris operator
+                    fji = 0.5 - 0.5 * np.cos(k[i] * neigh[0]) * np.cos(k[i] * neigh[1])
+                    term_x = neigh[0] * w_x[tuple(c_node)][j]
+                    term_y = neigh[1] * w_y[tuple(c_node)][j]
+                    denominator = rho_neigh * (neigh_r[tuple(c_node)][i] ** 2)
+                    den_mask = denominator > 0
+                    lsum = lsum + (2 * (term_x + term_y) / denominator) * fji if den_mask else 0
+                else:
+                    gsum = gsum + (fji * w_x[tuple(c_node)][j])
+                    fji = 0.5 - 0.5 * np.cos(k[i] * neigh[0]) * np.cos(k[i] * neigh[1])
+                    lsum = lsum + fji * w_l[tuple(c_node)][j]
+
+            # normalises the sum of the real and imaginary parts by k_ny
+            tmp = gsum / k_ny
+            l2_x = l2_x + tmp * tmp
+
+            tmp = lsum / k_ny ** 2
+            l2_l = l2_l + tmp * tmp
+
+
+        # below some data structuring
+        x_res.append([(l2_x / n_samples) ** .5, k[i] / k_ny])
+        lap_res.append([(l2_l / n_samples) ** .5, k[i] / k_ny])
+
+    x_res = np.array(x_res)
+    lap_res = np.array(lap_res)
+
+    return x_res, lap_res

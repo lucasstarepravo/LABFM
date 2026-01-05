@@ -30,7 +30,7 @@ def wendland_c2_deriv(neighbours_r, neigh_xy_d, h, deriv):
 
     q = neighbours_r / h
     if (q < 0).any() or (q > 2).any():
-        raise ValueError("r must be >0 and <=2")
+        raise ValueError("r must be >= 0 and <=2")
 
     deriv = deriv.lower()
     if deriv == 'dx':

@@ -17,13 +17,15 @@ def gnn_weights(coordinates, h, total_nodes, nodes_in_domain):
     features = []
     # needed to construct graph
     embedding_size = 256
-    approximation_order = 4 # only used to check moments
-    num_neighbours = 35
+    approximation_order = 3 # only used to check moments
+    num_neighbours = 25
     tree = cKDTree(coordinates)
-    model_x, _ = load_gnn('./gnn/trained_model', 13, model_class='n_gnn',
-                          full_path='gnn/trained_model/attrs29_epoch1096.pth') # model for x derivative
-    model_laplace, _ = load_gnn('./gnn/trained_model', 6, model_class='n_gnn',
-                                full_path='gnn/trained_model/attrs30_epoch796.pth')  # model for laplace
+    # best x model gnn/trained_model/attrs29_epoch1096.pth class n_gnn
+    # best lap model gnn/trained_model/attrs30_epoch796.pth class n_gnn
+    model_x, _ = load_gnn('./gnn/trained_model', 13, model_class='stencil',
+                          full_path='gnn/trained_model/attrs44.pth') # model for x derivative
+    model_laplace, _ = load_gnn('./gnn/trained_model', 6, model_class='stencil',
+                                full_path='gnn/trained_model/attrs44.pth')  # model for laplace
 
 
     ref_node_ls = []
@@ -34,7 +36,7 @@ def gnn_weights(coordinates, h, total_nodes, nodes_in_domain):
 
     num_edges = 2 * (num_neighbours - 1)
 
-    batch_size = min(nodes_in_domain, 2048)
+    batch_size = min(nodes_in_domain, 4096)
 
     edge_index = torch.zeros((2, num_edges * batch_size), dtype=torch.long)
     batch = torch.zeros(num_neighbours * batch_size, dtype=torch.long)
@@ -125,6 +127,8 @@ def gnn_weights(coordinates, h, total_nodes, nodes_in_domain):
     model_x.eval()
     model_laplace.eval()
 
+    lap_moments = []
+
     with torch.no_grad():
         for b in tqdm(data_loader, desc="Predicting GNN Weights for " + str(total_nodes), ncols=100):
 
@@ -141,11 +145,18 @@ def gnn_weights(coordinates, h, total_nodes, nodes_in_domain):
                                         edge_index,
                                         batch)
 
-            #pred_m = calc_moments_torch(batch.distances,
-            #                            out,
-            #                            batch.batch,
+            #pred_m_x = calc_moments_torch(x,
+            #                            out_x,
+            #                            batch,
             #                            approximation_order=approximation_order)
 
+            pred_m_lap = calc_moments_torch(x,
+                                        out_laplace,
+                                        batch,
+                                        approximation_order=approximation_order)
+
+            #x_moments.append(pred_m_x)
+            lap_moments.append(pred_m_lap)
             # can change all these reshape to view
             pred_reshape_x = out_x.view((int(batch[-1]) + 1, -1))
             weights_x.extend(pred_reshape_x.cpu().numpy() / h[:, None])

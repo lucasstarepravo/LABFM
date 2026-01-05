@@ -19,10 +19,10 @@ class AbstractBaseClass:
         self.total_nodes    = total_nodes
 
 
-    def r_power(self):
+    def r_power(self, sph=False):
         # make sure all methods get self._neigh_xy
         # currently only wc2 does
-        self.k = resolving_power(self.x, self.s, self._neigh_xy, k_samples=100, n_samples=1e10)
+        self.k = resolving_power(self.x, self.s, sph, self._neigh_xy, k_samples=100, n_samples=1e10)
 
     def polynomial_test_function_method(self):
         # used to compute the true values of the surface and its differential fields
@@ -103,7 +103,7 @@ class WLandC2(AbstractBaseClass):
         self.polynomial_test_function_method()
         self.approx_diff_op_sph()
         self.calc_l2()
-        #self.r_power()
+        #self.r_power(sph=True)
 
 
 class QSPline(AbstractBaseClass):
@@ -119,6 +119,7 @@ class QSPline(AbstractBaseClass):
         self.polynomial_test_function_method()
         self.approx_diff_op_sph()
         self.calc_l2()
+        #self.r_power(sph=True)
 
 
 
@@ -128,7 +129,7 @@ def run(total_nodes_list, kernel_list):
 
         # restructure the classes to have the weights in here as just .x .y .laplace
         args = (total_nodes,)
-        if k in [2, 4, 6, 8]: kernel, args = LABFM, (k, total_nodes)
+        if k in [2,3, 4, 6, 8]: kernel, args = LABFM, (k, total_nodes)
         elif k == 'q_s': kernel = QSPline
         elif k == 'wc2': kernel = WLandC2
         elif k == 'gnn': kernel = GNN
