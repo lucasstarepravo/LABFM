@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib.ticker import LogLocator, LogFormatterMathtext, NullFormatter
+from tqdm import tqdm
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import eigs
 
@@ -93,7 +94,7 @@ def plot_stability(
             A[i, i] = 0
             A[i, i] = - np.sum(A[i, :])
     else:
-        if kernel in ['wc2', 'q_s']: h = h ** 3
+        #if diff_operator == 'laplace': h = h ** 2
         for i in range(len(coor)):
             loc = coor[i]
             if tuple(loc) not in weights.keys(): continue
@@ -106,8 +107,8 @@ def plot_stability(
             A[i, i] = 0
             A[i, i] = - np.sum(A[i, :])
 
-    A_masked = np.ma.masked_values(A, 0)
-    A_sparse = csr_matrix(A)
+    #A_masked = np.ma.masked_values(A, 0)
+    #A_sparse = csr_matrix(A)
 
 
     #kernel_plot_title = {
@@ -160,13 +161,184 @@ def plot_stability(
     else:
         plt.show()
 
-mpl.rcParams.update({
-    "savefig.format": "pdf",
-    "pdf.fonttype": 42,
-    "ps.fonttype": 42,
-    "font.family": "serif",
-    "axes.unicode_minus": False,
-})
+def plot_stability_multi(
+    results: dict,
+    diff_operator: str,
+    save: bool = False,
+    filename: str = "spectrum.pdf",
+    column: str = "single",
+    show_axes0: bool = True,
+    point_size: float = 8.0,
+    alpha: float = 0.65,
+    resolutions: set[int] | None = None,
+    kernels: set[str | int] | None = None,
+    labels: dict[str | int, str] | None = None,
+    legend: bool = True,
+) -> None:
+
+    if diff_operator not in ["dx", "dy", "laplace"]:
+        raise ValueError("diff_operator must be one of: 'dx', 'dy', 'laplace'")
+
+    if labels is None:
+        labels = {
+            2: r"LABFM$_{p=2}$",
+            4: r"LABFM ($p=4$)",
+            6: r"LABFM ($p=6$)",
+            8: r"LABFM ($p=8$)",
+            "q_s": r"Quintic spline",
+            "wc2": r"Wendland C2",
+            "gnn": r"GNN$_{p=2}$(ours)",
+        }
+
+    figsize = (3.25, 2.6) if column == "single" else (6.75, 2.8)
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # ---- explicit plotting order (bottom → top) ----
+    def kernel_priority_laplace(k):
+        # bottom → top: LABFM, GNN, WC2, Q_S
+        if isinstance(k, int):  # LABFM orders
+            return (0, k)
+        if k == "gnn":
+            return (1, 0)
+        if k == "wc2":
+            return (2, 0)
+        if k == "q_s":
+            return (3, 0)
+        return (4, 0)
+
+    def kernel_priority_nonlaplace(k):
+        # bottom → top: WC2, LABFM, Q_S, GNN
+        if k == "wc2":
+            return (0, 0)
+        if isinstance(k, int):  # LABFM orders
+            return (1, k)
+        if k == "q_s":
+            return (2, 0)
+        if k == "gnn":
+            return (3, 0)
+        return (4, 0)
+
+    priority = kernel_priority_laplace if diff_operator == "laplace" else kernel_priority_nonlaplace
+
+    items = sorted(
+        results.items(),
+        key=lambda kv: (priority(kv[0][1]), kv[0][0])  # (kernel-priority, resolution)
+    )
+
+    # Get default matplotlib color cycle
+    colors = {
+        2: "tab:blue",
+        4: "tab:red",
+        6: "tab:green",
+        8: "tab:gray",
+        "q_s": "tab:purple",
+        "wc2": "tab:cyan",
+        "gnn": "tab:orange",
+    }
+    legend_done: set[str] = set()
+
+    print("Computing eigenvalues (overlay plot)")
+
+    for (resolution, kernel), attrs in tqdm(
+            items,
+            desc="Stability spectra",
+            unit="kernel",
+            leave=False,
+    ):
+        if resolutions is not None and resolution not in resolutions:
+            continue
+        if kernels is not None and kernel not in kernels:
+            continue
+
+        if diff_operator == "dx":
+            weights = attrs.x
+        elif diff_operator == "dy":
+            weights = attrs.y
+        else:
+            weights = attrs.laplace
+
+        h = attrs.h
+        coor = attrs.coordinates
+        neigh_coor = attrs._neigh_coor
+
+        n = len(coor)
+        A = np.zeros((n, n))
+        coord_to_idx = {tuple(x): i for i, x in enumerate(coor)}
+
+        if isinstance(h, dict):
+            for i in range(len(coor)):
+                loc = coor[i]
+                if tuple(loc) not in weights.keys(): continue
+
+                for j in range(neigh_coor[tuple(loc)].shape[0]):
+                    n_j = neigh_coor[tuple(loc)][j]
+                    neigh_idx = coord_to_idx[tuple(n_j)]
+                    A[i, neigh_idx] = np.array(weights[tuple(loc)][j] * h[tuple(loc)])
+
+                A[i, i] = 0
+                A[i, i] = - np.sum(A[i, :])
+        else:
+            # if diff_operator == 'laplace': h = h ** 2
+            for i in range(len(coor)):
+                loc = coor[i]
+                if tuple(loc) not in weights.keys(): continue
+
+                for j in range(neigh_coor[tuple(loc)].shape[0]):
+                    n_j = neigh_coor[tuple(loc)][j]
+                    neigh_idx = coord_to_idx[tuple(n_j)]
+                    A[i, neigh_idx] = np.array(weights[tuple(loc)][j] * h)
+
+                A[i, i] = 0
+                A[i, i] = - np.sum(A[i, :])
+
+        vals = np.linalg.eigvals(A)
+
+        base_label = labels.get(kernel, str(kernel))
+        this_label = f"{base_label}"
+        plot_label = this_label if this_label not in legend_done else None
+        if plot_label:
+            legend_done.add(this_label)
+
+        ax.scatter(
+            vals.real,
+            vals.imag,
+            s=point_size,
+            alpha=alpha,
+            linewidths=0,
+            label=plot_label,
+            zorder=3,
+            color=colors[kernel]
+        )
+
+    # ---- axes styling ----
+    ax.tick_params(labelsize=8)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
+
+    # grid below everything
+    ax.grid(True, which="major", linewidth=0.4, alpha=0.8)
+    ax.grid(True, which="minor", linestyle=":", linewidth=0.25, alpha=0.25)
+    ax.minorticks_on()
+
+    # ---- black zero axes on top ----
+    if show_axes0:
+        ax.axhline(0.0, color="black", linewidth=0.9, zorder=1)
+        ax.axvline(0.0, color="black", linewidth=0.9, zorder=1)
+
+    if legend:
+        ax.legend(fontsize=7, frameon=False, loc="best")
+
+    ax.set_xlabel(r"$\Re(\mu)$", fontsize=9, labelpad=2)
+    ax.set_ylabel(r"$\Im(\mu)$", fontsize=9, labelpad=2)
+
+    fig.tight_layout()
+
+    if save:
+        fig.savefig(filename, bbox_inches="tight", pad_inches=0.01, transparent=True)
+        plt.close(fig)
+    else:
+        plt.show()
+
 
 def plot_resolving_p(
     results,
@@ -290,14 +462,14 @@ def plot_resolving_p_real(
     zoom_pad=1.05,
     inset_loc="upper right",
     inset_size=("35%", "25%"),
-    inset_xlim=(0.5, 0.9),
-    inset_ylim=(0.0, 0.02),
+    inset_xlim=(0.1, 0.3),
+    inset_ylim=(0.0, 0.1),
 
     use_inset_x=False,              # NEW: Gradient inset
     inset_loc_x="upper right",       # NEW
     inset_size_x=("25%", "25%"),    # NEW
-    inset_xlim_x=(0.0, 0.2),        # NEW
-    inset_ylim_x=(5e-3, 0.2),        # NEW
+    inset_xlim_x=(0.05, 0.25),        # NEW
+    inset_ylim_x=(0.05, 0.25),        # NEW
 ):
     from functions.res_power import resolving_power2
 
@@ -335,7 +507,7 @@ def plot_resolving_p_real(
 
     for (resolution, kernel) in results.keys():
         attrs = results[(resolution, kernel)]
-        sph_bool = kernel in ["q_s", "wc2"]
+        sph_bool = False
 
         res_power_x, res_power_lap = resolving_power2(
             w_x=attrs.x,
@@ -389,8 +561,8 @@ def plot_resolving_p_real(
         )
         x_curves[kernel] = (k_hat_x, re_keff_x)   # NEW
 
-        x_l = k_hat_l ** 2
-        y_l = re_lap_eff ** 2
+        x_l = k_hat_l# ** 2
+        y_l = re_lap_eff #** 2
 
         ax_lap.plot(
             x_l, y_l,
@@ -436,8 +608,8 @@ def plot_resolving_p_real(
         ymin = np.min(high_x_vals)
         ymax = np.max(all_vals)
 
-        ax_lap.set_yscale("log")
-        ax_lap.set_ylim(ymin, zoom_pad * ymax)
+        #ax_lap.set_yscale("log")
+        #ax_lap.set_ylim(ymin, zoom_pad * ymax)
 
     # --- Laplacian inset (unchanged)
     if use_inset and len(lap_curves) > 0 and (k_hat_ref is not None):
@@ -452,7 +624,7 @@ def plot_resolving_p_real(
         for kernel, (x_l, y_l) in lap_curves.items():
             axins.plot(x_l, y_l, linewidth=1.2, color=colors.get(kernel, "k"))
 
-        axins.plot(k_hat_ref**2, k_hat_ref**2, linestyle="--", linewidth=1.0, color="black")
+        axins.plot(k_hat_ref, k_hat_ref**2, linestyle="--", linewidth=1.0, color="black")
 
         axins.set_xlim(*inset_xlim)
         axins.set_ylim(*inset_ylim)
@@ -471,7 +643,7 @@ def plot_resolving_p_real(
             loc=inset_loc_x,
             borderpad=0.8,
         )
-        axins_x.set_yscale("log")
+        #axins_x.set_yscale("log")
 
         for kernel, (xx, yy) in x_curves.items():
             axins_x.plot(xx, yy, linewidth=1.2, color=colors.get(kernel, "k"))
@@ -609,6 +781,7 @@ def plot_convergence(
     ax.yaxis.set_major_locator(LogLocator(base=10.0))
     ax.xaxis.set_minor_locator(LogLocator(base=10.0, subs=np.arange(2, 10) * 0.1))
     ax.yaxis.set_minor_locator(LogLocator(base=10.0, subs=np.arange(2, 10) * 0.1))
+    ax.tick_params(which="minor", colors="0.55")
 
     ax.xaxis.set_major_formatter(LogFormatterMathtext())
     ax.yaxis.set_major_formatter(LogFormatterMathtext())
@@ -617,7 +790,7 @@ def plot_convergence(
 
     # --- Grid: light and unobtrusive
     ax.grid(True, which="major", linewidth=0.4)
-    ax.grid(True, which="minor", linestyle=":", linewidth=0.3)
+    ax.grid(True, which="minor", linestyle=":", linewidth=0.3, alpha=0.8)
 
     # --- Legend (optional)
     if show_legend:

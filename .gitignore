@@ -6,3 +6,4 @@ gnn/trained_model
 results_*
 .DS_Store
 plots
+*.pdf

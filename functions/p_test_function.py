@@ -77,7 +77,7 @@ def dif_do(weights, surface_value, neigh_coor):
     dif_approx = {}
     for ref_node in neigh:
         surface_dif = np.array([surface_value[tuple(n_node)] - surface_value[tuple(ref_node)] for n_node in neigh[ref_node]]).reshape(1,-1)
-        w_ref_node  = weights[ref_node]
+        w_ref_node  = weights[tuple(ref_node)]
         dif_approx[ref_node] = np.dot(surface_dif, w_ref_node)
 
     return dif_approx

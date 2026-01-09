@@ -143,7 +143,7 @@ def resolving_power2(w_x: dict,
                     fji = 0.5 - 0.5 * np.cos(k[i] * neigh[0]) * np.cos(k[i] * neigh[1])
                     lsum = lsum + fji * w_l[tuple(c_node)][j]
 
-            # normalises the sum of the real and imaginary parts by k_ny
+            #
             tmp = gsum / k_ny
             l2_x = l2_x + tmp * tmp
 

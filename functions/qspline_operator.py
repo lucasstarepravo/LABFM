@@ -23,8 +23,8 @@ def quintic_spline(neighbours_r, h):
 
     return w
 
-def quintic_spline_deriv(neighbours_r, neigh_xy_d, h, deriv):
-    s_array = neighbours_r / h
+def quintic_spline_deriv(neighbours_r, neigh_xy_d, h, s, deriv):
+    q_array = neighbours_r / h
     w = []
 
     if deriv == 'dx':
@@ -38,23 +38,22 @@ def quintic_spline_deriv(neighbours_r, neigh_xy_d, h, deriv):
     else:
         raise ValueError('deriv must be dx or dy')
 
-    for i in range(s_array.shape[0]):
-        s = s_array[i]
-        if 0 <= s < 1:
-            ww = -5*(3-s)**4 + 30*(2-s)**4 - 75*(1-s)**4
-        elif 1 <= s < 2:
-            ww = -5*(3-s)**4 + 30*(2-s)**4
-        elif 2 <= s < 3:
-            ww = -5*(3-s)**4
+    for i in range(q_array.shape[0]):
+        q = q_array[i]
+        if 0 <= q < 1:
+            ww = -5*(3-q)**4 + 30*(2-q)**4 - 75*(1-q)**4
+        elif 1 <= q < 2:
+            ww = -5*(3-q)**4 + 30*(2-q)**4
+        elif 2 <= q < 3:
+            ww = -5*(3-q)**4
         else:
             ww = 0
 
         ww = (xy_div_r[i] / h) * ww
         w.append(ww)
 
-    w = (7/(478*np.pi*h**2))*np.array(w)
+    w = (7/(478*np.pi*h**2))*np.array(w) * s ** 2
     return w
-
 
 def quintic_spline_laplace(neighbours_r, h):
     norm = neighbours_r / h
@@ -81,7 +80,7 @@ def quintic_spline_laplace(neighbours_r, h):
     w = (7 / (478 * np.pi * h ** 2)) * np.array(w)
     return w
 
-def qspline_weights(coordinates, h, total_nodes):
+def qspline_weights(coordinates, h, total_nodes, s):
     tree = cKDTree(coordinates)
 
     neigh_r_dict    = {}
@@ -91,13 +90,14 @@ def qspline_weights(coordinates, h, total_nodes):
     weights_x       = {}
     weights_y       = {}
     weights_laplace = {}
-    support_radius = 2.2 * h
+    support_radius = 3 * h
 
 
 
 
     for ref_x, ref_y in tqdm(coordinates, desc="Calculating Quintinc Spline Weights for " + str(total_nodes) + ", ", ncols=100):
         # int his current form the density of all node swill be computed, but we only need up to the neighbours of the edge nodes
+        if ref_x > 0.5 or ref_x < -0.5 or ref_y > 0.5 or ref_y < -0.5: continue
         ref_node = (ref_x, ref_y)
         (neigh_r_d,
          neigh_xy_d,
@@ -105,15 +105,18 @@ def qspline_weights(coordinates, h, total_nodes):
                                                              ref_node,
                                                              support_radius,
                                                              tree,
-                                                             max_neighbors=200)
-        density_dict[ref_node] = np.ones(shape=neigh_r_d.shape) @ quintic_spline(neigh_r_d, h)
-        if ref_x > 0.5 or ref_x < -0.5 or ref_y > 0.5 or ref_y < -0.5: continue
+                                                             max_neighbors=180)
+        #density_dict[ref_node] = np.ones(shape=neigh_r_d.shape) @ quintic_spline(neigh_r_d, h)
+
 
         neigh_xy_dist[ref_node] = neigh_xy_d
         neigh_r_dict[ref_node] = neigh_r_d
-        weights_x[ref_node] = quintic_spline_deriv(neigh_r_d, neigh_xy_d, h, 'dx')
-        weights_y[ref_node] = quintic_spline_deriv(neigh_r_d, neigh_xy_d, h, 'dy')
+        weights_x[ref_node] = -quintic_spline_deriv(neigh_r_d, neigh_xy_d, h, s, 'dx')
+        weights_y[ref_node] = -quintic_spline_deriv(neigh_r_d, neigh_xy_d, h, s, 'dy')
+        weights_laplace[ref_node] =   (2 * (neigh_xy_d[1:, 0] * weights_x[ref_node][1:] +
+                                            neigh_xy_d[1:, 1] * weights_y[ref_node][1:]) /  neigh_r_d[1:] ** 2)
+        weights_laplace[ref_node] = np.concatenate(([0], weights_laplace[ref_node]))
         #weights_laplace[ref_node] = quintic_spline_laplace(neigh_r_d, h)
 
 
-    return weights_x, weights_y, density_dict, neigh_coor_dict, neigh_r_dict, neigh_xy_dist
+    return weights_x, weights_y, weights_laplace, neigh_coor_dict, neigh_xy_dist

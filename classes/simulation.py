@@ -96,12 +96,11 @@ class WLandC2(AbstractBaseClass):
         super().__init__(total_nodes, 'wc2')
         (self.x,
          self.y,
-         self.rho,
+         self.laplace,
          self._neigh_coor,
-         self._neigh_r,
-         self._neigh_xy) = wendlandc2_weights(self.coordinates, self.h, self.total_nodes)
+         self._neigh_xy) = wendlandc2_weights(self.coordinates, self.h, self.total_nodes, self.s)
         self.polynomial_test_function_method()
-        self.approx_diff_op_sph()
+        self.approx_diff_op()
         self.calc_l2()
         #self.r_power(sph=True)
 
@@ -112,12 +111,11 @@ class QSPline(AbstractBaseClass):
         super().__init__(total_nodes, 'q_s')
         (self.x,
          self.y,
-         self.rho,
+         self.laplace,
          self._neigh_coor,
-         self._neigh_r,
-         self._neigh_xy) = qspline_weights(self.coordinates, self.h, self.total_nodes)
+         self._neigh_xy) = qspline_weights(self.coordinates, self.h, self.total_nodes, self.s)
         self.polynomial_test_function_method()
-        self.approx_diff_op_sph()
+        self.approx_diff_op()
         self.calc_l2()
         #self.r_power(sph=True)
 
@@ -129,7 +127,7 @@ def run(total_nodes_list, kernel_list):
 
         # restructure the classes to have the weights in here as just .x .y .laplace
         args = (total_nodes,)
-        if k in [2,3, 4, 6, 8]: kernel, args = LABFM, (k, total_nodes)
+        if k in [2, 3, 4, 6, 8]: kernel, args = LABFM, (k, total_nodes)
         elif k == 'q_s': kernel = QSPline
         elif k == 'wc2': kernel = WLandC2
         elif k == 'gnn': kernel = GNN

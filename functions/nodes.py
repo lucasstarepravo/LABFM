@@ -6,7 +6,7 @@ import random
 
 def random_matrix(seed: float, shape: tuple, s: float) -> NDArray:
     random.seed(seed)
-    return np.array([[random.uniform(-s/2, s/2) for _ in range(shape[1])] for _ in range(shape[0])])
+    return np.array([[random.uniform(-s/4, s/4) for _ in range(shape[1])] for _ in range(shape[0])])
 
 def h_to_nn(s: float, nn: int, H_by_h: float) -> float:
     # This is used to compute the smoothing scale based on the desired number of neighbours
@@ -26,13 +26,13 @@ def calc_h(s: float, kernel: int | str) -> float:
     # This determines the smoothing scale
 
     if isinstance(kernel, int):
-        if   kernel <= 2: h = 2.0 * s
+        if   kernel <= 2: h = 1.5 * s
         elif kernel <= 4: h = 1.9 * s
         elif kernel <= 6: h = 2.3 * s
         elif kernel <= 8: h = 2.7 * s
     elif isinstance(kernel, str):
-        if kernel == 'wc2': h = h_to_nn(s, 100, H_by_h=1.897367)
-        elif kernel == 'q_s': h = h_to_nn(s, 180, H_by_h=2.158131)
+        if kernel == 'wc2': h = 1.5 * s # h_to_nn(s, 30, H_by_h=1.897367) #
+        elif kernel == 'q_s': h = 1.5 * s # h_to_nn(s, 180, H_by_h=2.158131)
         elif kernel == 'gnn': h = 2.3 * s
 
     else:

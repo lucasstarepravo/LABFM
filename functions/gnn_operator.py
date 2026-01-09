@@ -17,15 +17,15 @@ def gnn_weights(coordinates, h, total_nodes, nodes_in_domain):
     features = []
     # needed to construct graph
     embedding_size = 256
-    approximation_order = 3 # only used to check moments
-    num_neighbours = 25
+    approximation_order = 2 # only used to check moments
+    num_neighbours = 35
     tree = cKDTree(coordinates)
     # best x model gnn/trained_model/attrs29_epoch1096.pth class n_gnn
     # best lap model gnn/trained_model/attrs30_epoch796.pth class n_gnn
-    model_x, _ = load_gnn('./gnn/trained_model', 13, model_class='stencil',
-                          full_path='gnn/trained_model/attrs44.pth') # model for x derivative
-    model_laplace, _ = load_gnn('./gnn/trained_model', 6, model_class='stencil',
-                                full_path='gnn/trained_model/attrs44.pth')  # model for laplace
+    model_x, _ = load_gnn('./gnn/trained_model', 13, model_class='n_gnn',
+                          full_path='gnn/trained_model/attrs29_epoch1096.pth') # model for x derivative
+    model_laplace, _ = load_gnn('./gnn/trained_model', 6, model_class='n_gnn',
+                                full_path='gnn/trained_model/attrs30_epoch796.pth')  # model for laplace
 
 
     ref_node_ls = []
@@ -150,13 +150,13 @@ def gnn_weights(coordinates, h, total_nodes, nodes_in_domain):
             #                            batch,
             #                            approximation_order=approximation_order)
 
-            pred_m_lap = calc_moments_torch(x,
-                                        out_laplace,
-                                        batch,
-                                        approximation_order=approximation_order)
+            #pred_m_lap = calc_moments_torch(x,
+            #                            out_laplace,
+            #                            batch,
+            #                            approximation_order=approximation_order)
 
             #x_moments.append(pred_m_x)
-            lap_moments.append(pred_m_lap)
+            #lap_moments.append(pred_m_lap)
             # can change all these reshape to view
             pred_reshape_x = out_x.view((int(batch[-1]) + 1, -1))
             weights_x.extend(pred_reshape_x.cpu().numpy() / h[:, None])
