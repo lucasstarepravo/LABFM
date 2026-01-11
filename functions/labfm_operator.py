@@ -5,6 +5,7 @@ import math
 from functions.nodes import neighbour_nodes_kdtree
 from scipy.spatial import cKDTree
 from tqdm import tqdm
+import time
 
 
 def monomial_power(polynomial):
@@ -221,29 +222,39 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
     tree = cKDTree(coordinates)
     neigh_xy_dist = {}
 
+    t_total = 0.0
+    count = 0
+
     for ref_x, ref_y in tqdm(coordinates, desc="Calculating LABFM_Weights for " + str(total_nodes) + ", " + str(polynomial), ncols=100):
         if ref_x > 0.5 or ref_x < -0.5 or ref_y > 0.5 or ref_y < -0.5: continue
 
         ref_node            = (ref_x, ref_y)
         #neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes(coordinates, ref_node, h, max_neighbors=20)
-        neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, 2*h, tree, max_neighbors=35)
+        neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, 2*h, tree, max_neighbors=10)
         neigh_xy_dist[ref_node] = neigh_xy_d
+
+        t0 = time.perf_counter()
         monomial            = calc_monomial(neigh_xy_d, monomial_exponent) * scaling_vector
         basis_func          = calc_abf(neigh_r_d, neigh_xy_d, monomial_exponent, h)
         m_matrix            = calc_m(basis_func, monomial)
         psi_x               = np.linalg.solve(m_matrix, cd_x)
-        psi_y               = np.linalg.solve(m_matrix, cd_y)
+        #psi_y               = np.linalg.solve(m_matrix, cd_y)
         #cd_laplace1 = cd_laplace + \
         #              cd_laplace * (np.random.choice((-1, 1)) *
         #                            np.random.uniform(0, 1.5*1e-2, size=cd_laplace.shape)) + \
         #              (np.random.choice((-1, 1)) * np.random.uniform(0, 1.5*1e-2, size=cd_laplace.shape))
         psi_laplace         = np.linalg.solve(m_matrix, cd_laplace)
         node_weight_x       = basis_func @ psi_x
-        node_weight_y       = basis_func @ psi_y
-        node_weight_laplace = basis_func @ psi_laplace
+        t_total += time.perf_counter() - t0
+        count += 1
+        #node_weight_y       = basis_func @ psi_y
+        #node_weight_laplace = basis_func @ psi_laplace
         weights_x[ref_node] = node_weight_x[:,0]
-        weights_y[ref_node] = node_weight_y[:,0]
-        weights_laplace[ref_node] = node_weight_laplace[:,0]
+        #weights_y[ref_node] = node_weight_y[:,0]
+        #weights_laplace[ref_node] = node_weight_laplace[:,0]
+
+    print(f"Total compute time (selected block): {t_total:.4e} s")
+    print(f"Number of processed nodes: {count}")
 
     return weights_x, weights_y, weights_laplace, neigh_coor_dict, neigh_xy_dist
 

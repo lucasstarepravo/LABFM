@@ -3,6 +3,7 @@ from gnn.AttenGNN import AMessagePassingGNN
 from gnn.SNA_GNN import csf_gnn
 from gnn.Node_GNN import NodeMessagePassingGNN
 from gnn.stencil_model import StencilGNN
+from gnn.m63 import SmallGNN
 import logging
 import pickle as pk
 from collections import OrderedDict
@@ -27,7 +28,7 @@ def load_gnn(model_path, model_id, model_class='gnn', full_path=''):
                        map_location='cpu',
                        weights_only=False)
 
-    if model_class.lower() not in ['gnn', 'a_gnn', 'sna_gnn', 'n_gnn', 'stencil']:
+    if model_class.lower() not in ['gnn', 'a_gnn', 'sna_gnn', 'n_gnn', 'stencil', 'small']:
         raise ValueError("model_class must be 'gnn', 'sna_gnn', 'n_gnn', 'stencil', or 'a_gnn' ")
 
     layers = attrs['layers']
@@ -44,6 +45,9 @@ def load_gnn(model_path, model_id, model_class='gnn', full_path=''):
                                            layers=layers)
     elif model_class.lower() == 'stencil':
         model_instance = StencilGNN(embedding_size=embedding_size,
+                                    layers=layers)
+    elif model_class.lower() == 'small':
+        model_instance = SmallGNN(embedding_size=embedding_size,
                                     layers=layers)
     else:
         model_instance = csf_gnn(embedding_size=embedding_size,

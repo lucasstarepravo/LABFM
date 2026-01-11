@@ -11,8 +11,8 @@ import pickle as pk
 # LABFM:          [2,4,6,8]
 
 plot_ls = [False,
-           True,
-           False]
+           False,
+           True]
 
 bool_plot_stability   = plot_ls[0]
 bool_plot_convergence = plot_ls[1]
@@ -22,7 +22,7 @@ idx_to_res_power = 0
 
 if __name__ == '__main__':
     total_nodes_list = [50]
-    kernel_list =  ['q_s']
+    kernel_list =  ['gnn']
     results = run(total_nodes_list, kernel_list)
 
 # Plot stability of operator

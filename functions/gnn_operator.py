@@ -9,7 +9,10 @@ import shutil
 from tqdm import tqdm
 from functions.nodes import neighbour_nodes_kdtree
 import numpy as np
+import time
 
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 def gnn_weights(coordinates, h, total_nodes, nodes_in_domain):
 
@@ -18,14 +21,14 @@ def gnn_weights(coordinates, h, total_nodes, nodes_in_domain):
     # needed to construct graph
     embedding_size = 256
     approximation_order = 2 # only used to check moments
-    num_neighbours = 35
+    num_neighbours = 10
     tree = cKDTree(coordinates)
     # best x model gnn/trained_model/attrs29_epoch1096.pth class n_gnn
     # best lap model gnn/trained_model/attrs30_epoch796.pth class n_gnn
-    model_x, _ = load_gnn('./gnn/trained_model', 13, model_class='n_gnn',
-                          full_path='gnn/trained_model/attrs29_epoch1096.pth') # model for x derivative
-    model_laplace, _ = load_gnn('./gnn/trained_model', 6, model_class='n_gnn',
-                                full_path='gnn/trained_model/attrs30_epoch796.pth')  # model for laplace
+    model_x, _ = load_gnn('./gnn/trained_model', 13, model_class='stencil',
+                          full_path='gnn/trained_model/attrs53.pth') # model for x derivative
+    model_laplace, _ = load_gnn('./gnn/trained_model', 6, model_class='stencil',
+                                full_path='gnn/trained_model/attrs44.pth')  # model for laplace
 
 
     ref_node_ls = []
@@ -59,7 +62,7 @@ def gnn_weights(coordinates, h, total_nodes, nodes_in_domain):
         ref_node_ls.append(ref_node)
         neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates,
                                                                                   ref_node,
-                                                                                  3 * h,
+                                                                                  2 * h,
                                                                                   tree,
                                                                                   max_neighbors=num_neighbours)
 
@@ -129,6 +132,8 @@ def gnn_weights(coordinates, h, total_nodes, nodes_in_domain):
 
     lap_moments = []
 
+    start = time.perf_counter()
+
     with torch.no_grad():
         for b in tqdm(data_loader, desc="Predicting GNN Weights for " + str(total_nodes), ncols=100):
 
@@ -175,6 +180,9 @@ def gnn_weights(coordinates, h, total_nodes, nodes_in_domain):
         # add check to labfm weights
         #weights_np = np.array(weights_x)
         #unscaled_w_np = np.array(unscaled_w_x)
+
+    end = time.perf_counter()
+    #print(f"Total inference time: {end - start:.4e} s")
 
 
     weights_x_dict = {}
