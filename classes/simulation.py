@@ -1,12 +1,9 @@
-from functions.labfm_operator import calc_l2, calc_l2_gnn
 from functions.nodes import create_nodes, calc_h
 from functions.qspline_operator import qspline_weights
 from functions.wendland_c2_operator import wendlandc2_weights
 from functions.labfm_operator import calc_weights
 from functions.gnn_operator import gnn_weights
-from functions.p_test_function import (test_function, dif_analytical, laplace_phi, dif_do,
-                                       deriv_sph, lap_sph_standard, lap_moris)
-from functions.res_power import resolving_power
+from functions.p_test_function import test_function, dif_analytical, laplace_phi, dif_do, calc_l2
 
 
 class AbstractBaseClass:
@@ -19,13 +16,8 @@ class AbstractBaseClass:
         self.total_nodes    = total_nodes
 
 
-    def r_power(self, sph=False):
-        # make sure all methods get self._neigh_xy
-        # currently only wc2 does
-        self.k = resolving_power(self.x, self.s, sph, self._neigh_xy, k_samples=100, n_samples=1e10)
-
     def polynomial_test_function_method(self):
-        # used to compute the true values of the surface and its differential fields
+        # computes the true values of the surface and its differential fields
         self.surface_value = test_function(self.coordinates)
         self.dtdx_true     = dif_analytical(self.coordinates, 'dtdx')
         self.dtdy_true     = dif_analytical(self.coordinates, 'dtdy')
@@ -33,26 +25,14 @@ class AbstractBaseClass:
 
 
     def approx_diff_op(self):
+        # computes the discrete differential fields
         self.dtdx_approx    = dif_do(self.x, self.surface_value, self._neigh_coor)
         #self.dtdy_approx    = dif_do(self.y, self.surface_value, self._neigh_coor)
         self.laplace_approx = dif_do(self.laplace, self.surface_value, self._neigh_coor)
 
 
-    def approx_diff_op_sph(self, moris_op=True):
-        self.dtdx_approx    = deriv_sph(self.x, self.surface_value, self._neigh_coor, self.rho)
-        self.dtdy_approx    = deriv_sph(self.y, self.surface_value, self._neigh_coor, self.rho)
-        if moris_op:
-            lap_sph = lap_moris
-            args = (self._neigh_coor, self._neigh_r, self.x, self.y, self._neigh_xy, self.rho,
-                    self.h, self.surface_value)
-        else:
-            lap_sph = lap_sph_standard
-            args = (self._neigh_coor, self._neigh_r, self.laplace, self.rho, self.surface_value)
-        self.laplace_approx = lap_sph(*args) # still need to get this to work
-
-
     def calc_l2(self):
-        # to call calc_l2_all the first arg must be the weights of the
+        # computes relative L2 error
         self.dx_l2       = calc_l2(self.dtdx_approx, self.dtdx_true)
         #self.dy_l2       = calc_l2(self.dtdy_approx, self.dtdy_true)
         self.laplace_l2  = calc_l2(self.laplace_approx, self.laplace_true)
@@ -72,7 +52,6 @@ class LABFM(AbstractBaseClass):
         self.polynomial_test_function_method()
         self.approx_diff_op()
         self.calc_l2()
-        #self.r_power()
 
 
 class GNN(AbstractBaseClass):
@@ -87,7 +66,6 @@ class GNN(AbstractBaseClass):
         self.polynomial_test_function_method()
         self.approx_diff_op()
         self.calc_l2()
-        #self.r_power()
 
 
 class WLandC2(AbstractBaseClass):
@@ -102,7 +80,6 @@ class WLandC2(AbstractBaseClass):
         self.polynomial_test_function_method()
         self.approx_diff_op()
         self.calc_l2()
-        #self.r_power(sph=True)
 
 
 class QSPline(AbstractBaseClass):
@@ -117,7 +94,6 @@ class QSPline(AbstractBaseClass):
         self.polynomial_test_function_method()
         self.approx_diff_op()
         self.calc_l2()
-        #self.r_power(sph=True)
 
 
 
@@ -125,14 +101,13 @@ def run(total_nodes_list, kernel_list):
     result = {}
     for total_nodes, k in zip(total_nodes_list, kernel_list):
 
-        # restructure the classes to have the weights in here as just .x .y .laplace
         args = (total_nodes,)
         if k in [2, 3, 4, 6, 8]: kernel, args = LABFM, (k, total_nodes)
         elif k == 'q_s': kernel = QSPline
         elif k == 'wc2': kernel = WLandC2
         elif k == 'gnn': kernel = GNN
-        else: raise ValueError(" kernel must be either polynomial order for labfm (2, 4, 6, 8), or one of "
-                               "the following kernels 'wc2', '_s', 'gnn'")
+        else: raise ValueError(" kernel must be either polynomial order for labfm (2, 3, 4, 6, 8), or one of "
+                               "the following kernels 'wc2', 'q_s', 'gnn'")
 
         sim = kernel(*args)
         result[(total_nodes, k)] = sim

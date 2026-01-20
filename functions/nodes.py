@@ -1,5 +1,6 @@
 import numpy as np
 from numpy.typing import NDArray
+from typing import Tuple
 from scipy.spatial import cKDTree
 import random
 
@@ -8,18 +9,6 @@ def random_matrix(seed: float, shape: tuple, s: float) -> NDArray:
     random.seed(seed)
     return np.array([[random.uniform(-s/4, s/4) for _ in range(shape[1])] for _ in range(shape[0])])
 
-def h_to_nn(s: float, nn: int, H_by_h: float) -> float:
-    # This is used to compute the smoothing scale based on the desired number of neighbours
-    """
-
-    :param s: average distance
-    :param nn: number of neighbours (obtained from Dehnen and Aly 2012)
-    :param H_by_h: ratio from max radius and smoothing scale (obtained from Dehnen and Aly 2012)
-    :return:
-    h: smoothing scale
-    """
-    h = s * ((nn / np.pi) ** .5) / H_by_h
-    return h
 
 
 def calc_h(s: float, kernel: int | str) -> float:
@@ -30,18 +19,16 @@ def calc_h(s: float, kernel: int | str) -> float:
         elif kernel <= 4: h = 1.9 * s
         elif kernel <= 6: h = 2.3 * s
         elif kernel <= 8: h = 2.7 * s
+        return h
     elif isinstance(kernel, str):
-        if kernel == 'wc2': h = 1.5 * s # h_to_nn(s, 30, H_by_h=1.897367) #
-        elif kernel == 'q_s': h = 1.5 * s # h_to_nn(s, 180, H_by_h=2.158131)
+        if kernel == 'wc2': h = 1.5 * s
+        elif kernel == 'q_s': h = 1.5 * s
         elif kernel == 'gnn': h = 2.3 * s
-
-    else:
-        raise ValueError("The kernel argument must be in (2, 4, 6, 8), or one of "
-                         "the following 'wc2', 'q_s', 'gnn'")
-    return h
+        return h
 
 
-def create_nodes(total_nodes: int, s: float, h: float) -> NDArray:
+
+def create_nodes(total_nodes: int, s: float, h: float) -> Tuple[NDArray, int]:
     """
     :param total_nodes: is a scalar that states the number of nodes we would like to have inside the domain
     :param s: is a scalar that determines the average distance between points inside the comp. stencil
@@ -50,7 +37,7 @@ def create_nodes(total_nodes: int, s: float, h: float) -> NDArray:
     y coordinates, respectively. It is possible to access the ith node with "coordinates[i]"
     """
     delta = 1.0 / (total_nodes - 1)  # Determine the spacing delta between the points in the original domain
-    two_times_influence_radius = 4 * h
+    two_times_influence_radius = 2 * h
     n = int(two_times_influence_radius / delta)  # Calculate the number of points to be added on each side
 
     # change this to only create nodes to the specific size of h
@@ -93,6 +80,5 @@ def neighbour_nodes_kdtree(coordinates, ref_node, h, tree, max_neighbors=1000):
 
     # Calculate displacements and distances
     displacements = neigh_coor - ref_node
-    #distances = np.linalg.norm(displacements, axis=1)
     distances = np.sqrt(np.sum(displacements**2, axis=1))
     return distances, displacements, neigh_coor

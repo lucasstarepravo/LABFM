@@ -12,24 +12,18 @@ import torch
 from torch.optim import Adam
 import math
 from torch_geometric.nn.aggr import SumAggregation
+from gnn.m65 import m65
+from gnn.m67 import m67
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def load_gnn(model_path, model_id, model_class='gnn', full_path=''):
-
-    if full_path:
-        path = full_path
-    else:
-        path = os.path.join(model_path, f'attrs{model_id}.pth')
+def load_gnn(path, model_class='gnn'):
 
     attrs = torch.load(path,
                        map_location='cpu',
                        weights_only=False)
-
-    if model_class.lower() not in ['gnn', 'a_gnn', 'sna_gnn', 'n_gnn', 'stencil', 'small']:
-        raise ValueError("model_class must be 'gnn', 'sna_gnn', 'n_gnn', 'stencil', or 'a_gnn' ")
 
     layers = attrs['layers']
     embedding_size = attrs['embedding_size']
@@ -49,6 +43,12 @@ def load_gnn(model_path, model_id, model_class='gnn', full_path=''):
     elif model_class.lower() == 'small':
         model_instance = SmallGNN(embedding_size=embedding_size,
                                     layers=layers)
+    elif model_class.lower() == 'm65':
+        model_instance = m65(embedding_size=embedding_size,
+                                    layers=layers)
+    elif model_class.lower() == 'm67':
+        model_instance = m67(embedding_size=embedding_size,
+                             layers=layers)
     else:
         model_instance = csf_gnn(embedding_size=embedding_size,
                                             layers=layers)
@@ -71,8 +71,7 @@ def monomial_power(polynomial):
     for total_polynomial in range(1, polynomial + 1):
         for i in range(total_polynomial + 1):
             monomial_exponent.append((total_polynomial - i, i))
-    # Convert list of tuples to a PyTorch tensor
-    return monomial_exponent # torch.tensor(monomial_exponent, dtype=torch.long, device=device)
+    return monomial_exponent
 
 
 def calc_moments_torch(inputs, outputs, batch, approximation_order=2):
@@ -85,11 +84,10 @@ def calc_moments_torch(inputs, outputs, batch, approximation_order=2):
 
         monomial.append(monomial_term)
 
-    mon = torch.stack(monomial)  # ensure shape (P, B)
+    mon = torch.stack(monomial)
     batch = batch.to(torch.long)
-    outs = outputs.squeeze(1)  # (B,)
-
-    weighted = mon * outs.unsqueeze(0)  # (P, B)
+    outs = outputs.squeeze(1)
+    weighted = mon * outs.unsqueeze(0)
 
     sum_aggr = SumAggregation()
     mm = []
