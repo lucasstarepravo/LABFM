@@ -7,3 +7,4 @@ results_*
 .DS_Store
 plots
 *.pdf
+*.pk

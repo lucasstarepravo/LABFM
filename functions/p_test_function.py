@@ -83,73 +83,12 @@ def dif_do(weights, surface_value, neigh_coor):
     return dif_approx
 
 
-def deriv_sph(weights, surface_value, neigh_coor, rho):
+def calc_l2(pred, true):
+    error = []
+    norm  = []
+    for ref_node in pred:
+        error.append((true[ref_node] - pred[ref_node]) ** 2)
+        norm.append(true[ref_node] ** 2)
 
-    neigh = neigh_coor
-
-    dif_approx = {}
-
-    for ref_node in neigh:
-        x = ref_node[0]
-        y = ref_node[1]
-        if x > 0.5 or x < -0.5 or y > 0.5 or y < -0.5: continue
-        surface_diff = []
-        for i, nn in enumerate(neigh[ref_node]):
-            surface_diff.append((surface_value[tuple(nn)] - surface_value[ref_node]) / rho[tuple(nn)])
-        surface_diff = np.array(surface_diff)
-        dif_approx[ref_node] = -np.dot(surface_diff, weights[ref_node])
-
-    return dif_approx
-
-
-def lap_sph_standard(neigh_coor, neigh_r, lap_w, rho, surface_value):
-    dif_approx = {}
-
-    for ref_node in neigh_coor:
-        x = ref_node[0]
-        y = ref_node[1]
-        if x > 0.5 or x < -0.5 or y > 0.5 or y < -0.5: continue
-        temp_ls = []
-        for i in range(neigh_coor[ref_node].shape[0]):
-            nn = neigh_coor[ref_node][i]
-            delta_x = neigh_r[ref_node][i] / neigh_r[ref_node][i] ** 2 if neigh_r[ref_node][i] != 0 else 0
-
-            surface_diff = (surface_value[tuple(nn)] - surface_value[ref_node]) * delta_x
-            surface_diff = surface_diff / rho[tuple(nn)] # this uses density of all nodes, not just the centrla ones
-            temp_ls.append(surface_diff)
-
-        temp_ls = np.array(temp_ls)
-        dif_approx[ref_node] = np.dot(temp_ls, lap_w[ref_node])
-
-    return dif_approx
-
-
-def lap_moris(neigh_coor, neigh_r, x_w, y_w, neigh_dist, rho, h, surface_value):
-
-    # values of viscosity
-    v1_plus_v2 = 2
-    dif_approx = {}
-    epsilon = 0 #(0.001 * h)**2
-
-    for ref_node in neigh_coor:
-        x = ref_node[0]
-        y = ref_node[1]
-        if x > 0.5 or x < -0.5 or y > 0.5 or y < -0.5: continue
-        temp_ls = []
-        for i in range(neigh_coor[ref_node].shape[0]):
-            nn = neigh_coor[ref_node][i]
-
-            surface_diff = -(surface_value[tuple(nn)] - surface_value[ref_node])
-            term_x = neigh_dist[ref_node][i][0] * x_w[ref_node][i]
-            term_y = neigh_dist[ref_node][i][1] * y_w[ref_node][i]
-            denominator = rho[tuple(nn)] * (neigh_r[ref_node][i] ** 2 + epsilon)
-            den_mask = denominator > 0
-
-            surface_diff = (2*(term_x + term_y) / denominator) * surface_diff if den_mask else 0
-
-            temp_ls.append(surface_diff)
-
-        val = np.sum(np.array(temp_ls))
-        dif_approx[ref_node] = val
-
-    return dif_approx
+    l2 = np.sqrt(sum(error)) / np.sqrt(sum(norm))
+    return l2

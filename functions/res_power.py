@@ -1,104 +1,25 @@
 import numpy as np
+from typing import Tuple, Any
 from numpy import ndarray
+from numpy.typing import NDArray
+from torch_geometric.loader.ibmb_loader import topk_ppr_matrix
 from tqdm import tqdm
 
-# what you need
-# weights computed for x and y derivative approximation
-# location of the central node and its neighbours
-def resolving_power(w: dict,
-                    s: float,
-                    sph,
-                    neigh_dist_xy: dict,
-                    n_samples: int,
-                    k_samples: int = 100
-                    ) ->  dict:
 
-    pi = np.pi
-
-    # Computing Nyquist wavenumber based on average particle distance
-    k_ny = pi / s
-
-    #k_ny_dict = {}
-    #for key, val in neigh_dist_xy.items():
-    #    k_ny_dict[key] = np.mean(val)
-
-    # Samples to scale Nyquist wavenumber
-    samples = np.linspace(0, 1, k_samples)
-
-    # Fixed wavenumber
-    theta = 0 # 0.785398 # np.linspace(0, pi, 3)
-
-    # Scaled sampled Nyquist wavenumber
-    k_scaled = samples[1:] * k_ny
-
-    # Scaling fixed wavenumbers by sampled Nyquist wavenumber
-    # essentially chooses how much of the total wave number is in the real (x dim) or imaginary (y dim) part
-    k_x = k_scaled * np.cos(theta) # real
-    k_y = k_scaled * np.sin(theta) # imaginary
-
-    # Sampling nodes from domain to do resolving power analysis
-    rng = np.random.default_rng(42)
-    ls = list(neigh_dist_xy.keys())
-    ls = np.array(ls)
-    n_samples = min(n_samples, len(w))
-    coor_idx = rng.choice(len(ls), size=n_samples, replace=False)
-    coor_to_test = ls[coor_idx]
-
-    k_final = []
-
-    # Computing ||k||, although I don't actually use it so that k_hat and k_eff range from [0,1]
-    k = np.sqrt(k_x ** 2 + k_y ** 2)
-    #k = k_scaled
-
-    # Normalising k to be [0,1]
-    #k_hat = k / k_ny #* k_x
-
-    # looping over each sample in k_x
-    for i in tqdm(range(len(k)), desc="Processing k_x"):
-        tmp = []
-        # loops over each node that will be used to compute the resolving power
-        for c_node in coor_to_test:
-            n_dist = neigh_dist_xy[tuple(c_node)] # obtains the x and y distances of all neighbours of the node
-            S_sin, S_cos = 0, 0                   # initialise the real and imaginary parts of k_eff
-            # loops over each neighbour of a central node
-            for j, neigh in enumerate(n_dist):
-                eta = k_x[i] * neigh[0] + k_y[i] * neigh[1]         # computes eta = (k_x * x_ji + k_y * y_ji)
-                S_sin += (np.sin(eta) * w[tuple(c_node)][j])          # computes sin(eta) * w_ji
-                S_cos += (1 - np.cos(eta)) * w[tuple(c_node)][j]    # computes (1 - cos(eta)) * w_ji
-
-            # normalises the sum of the real and imaginary parts by k_ny
-            R = S_sin / k[-1] if not sph else S_sin / k[-1] ** 3
-            I = S_cos / k[-1] if not sph else S_cos / k[-1] ** 3
-            #R = S_sin / k[-1]
-
-            # below some data structuring
-            tmp.append([R, I, k[i] / k[-1]])
-            #tmp.append([R, k[i] / k[-1]])
-
-        k_final.append(tmp)
-
-    k_final = np.array(k_final)
-    k_tmp   = np.sqrt(np.mean(k_final[..., :-1] ** 2, axis=1))
-    k_final = np.concatenate((k_tmp, k_final[:, 0, -1][:, None]), axis=1) # averaging for all nodes
-
-    return k_final
-
-def resolving_power2(w_x: dict,
+def resolving_power(w_x: dict,
                      w_l: dict,
-                     w_y: dict,
                     s: float,
-                    sph_bool: bool,
                     neigh_dist_xy: dict,
-                    neigh_r: dict,
-                    n_samples: int,
-                    rho: None | dict = None,
-                    neigh_coor: None | dict = None,
-                    ) ->  dict:
+                    n_samples: int = 300,
+                    ) -> tuple[list[Any], list[Any]]:
 
     pi = np.pi
     k_ny = pi / s
 
-    k = np.arange(start=1, stop=int(k_ny), step=2, dtype=np.float32)
+    # Angle of the coming wave can be changed here
+    theta = [0, 1/4]
+
+    k = np.arange(start=1, stop=int(k_ny), step=0.001, dtype=np.float32)
 
     # Sampling nodes from domain to do resolving power analysis
     rng = np.random.default_rng(42)
@@ -108,54 +29,83 @@ def resolving_power2(w_x: dict,
     coor_idx = rng.choice(len(ls), size=n_samples, replace=False)
     coor_to_test = ls[coor_idx]
 
-    # Normalising k to be [0,1]
-    #k_hat = k / k_ny #* k_x
-    x_res = []
-    lap_res = []
+    # Lists to save modal response for all angles
+    x_res_all = []
+    lap_res_all = []
+
     # looping over each sample in k_x
-    for i in tqdm(range(len(k)), desc="Processing k_x"):
-        l2_x = 0
-        l2_l = 0
+    for t in range(len(theta)):
 
-        # loops over each node that will be used to compute the resolving power
-        for c_node in coor_to_test:
-            n_dist = neigh_dist_xy[tuple(c_node)] # obtains the x and y distances of all neighbours of the node
-            gsum = 0
-            lsum = 0
-            # loops over each neighbour of a central node
-            for j, neigh in enumerate(n_dist):
-                fji = np.sin(k[i] * neigh[0])
+        # Lists used to save modal response for each angle
+        x_res = []
+        lap_res = []
+        for i in tqdm(range(len(k)), desc=f"Processing Modal Response for theta {theta[t]} pi"):
+            k_x = k[i] * np.cos(theta[t] * pi)
+            k_y = k[i] * np.sin(theta[t] * pi)
 
-                if sph_bool:
-                    neigh_coor_s = neigh_coor[tuple(c_node)][j]
-                    rho_neigh = rho[tuple(neigh_coor_s)]
-                    gsum = gsum + (fji * w_x[tuple(c_node)][j] / rho_neigh)
+            l2_x_re = 0
+            l2_l_re = 0
 
-                    # Moris operator
-                    fji = 0.5 - 0.5 * np.cos(k[i] * neigh[0]) * np.cos(k[i] * neigh[1])
-                    term_x = neigh[0] * w_x[tuple(c_node)][j]
-                    term_y = neigh[1] * w_y[tuple(c_node)][j]
-                    denominator = rho_neigh * (neigh_r[tuple(c_node)][i] ** 2)
-                    den_mask = denominator > 0
-                    lsum = lsum + (2 * (term_x + term_y) / denominator) * fji if den_mask else 0
-                else:
-                    gsum = gsum + (fji * w_x[tuple(c_node)][j])
-                    fji = 0.5 - 0.5 * np.cos(k[i] * neigh[0]) * np.cos(k[i] * neigh[1])
-                    lsum = lsum + fji * w_l[tuple(c_node)][j]
-
-            #
-            tmp = gsum / k_ny
-            l2_x = l2_x + tmp * tmp
-
-            tmp = lsum / k_ny ** 2
-            l2_l = l2_l + tmp * tmp
+            l2_x_im = 0
+            l2_l_im = 0
 
 
-        # below some data structuring
-        x_res.append([(l2_x / n_samples) ** .5, k[i] / k_ny])
-        lap_res.append([(l2_l / n_samples) ** .5, k[i] / k_ny])
+            # loops over each node that will be used to compute the resolving power
+            for c_node in coor_to_test:
+                n_dist = neigh_dist_xy[tuple(c_node)] # obtains the x and y distances of all neighbours of the node
 
-    x_res = np.array(x_res)
-    lap_res = np.array(lap_res)
+                # real parts
+                x_real_sum = 0
+                lap_real_sum = 0
 
-    return x_res, lap_res
+                x_im_sum = 0
+                lap_im_sum = 0
+
+                # loops over each neighbour of a central node
+                for j, neigh in enumerate(n_dist):
+                    # Real part of derivative
+                    fji = np.sin(k_x * neigh[0] + k_y * neigh[1])
+                    x_real_sum = x_real_sum + fji * w_x[tuple(c_node)][j]
+
+                    # Imaginary part of derivative
+                    fji = 1 - np.cos(k_x * neigh[0] + k_y * neigh[1])
+                    x_im_sum = x_im_sum + fji * w_x[tuple(c_node)][j]
+
+                    # Real part of Laplacian
+                    fji = 1 - np.cos(k_x * neigh[0] + k_y * neigh[1])
+                    lap_real_sum = lap_real_sum + fji * w_l[tuple(c_node)][j]
+
+                    # Imaginary part of Laplacian
+                    fji = np.sin(k_x * neigh[0] + k_y * neigh[1])
+                    lap_im_sum = lap_im_sum - fji * w_l[tuple(c_node)][j]
+
+                tmp = x_real_sum / (k_ny * np.cos(theta[t] * pi))
+                l2_x_re = l2_x_re + tmp * tmp
+
+                tmp = lap_real_sum / (k_ny ** 2)
+                l2_l_re = l2_l_re + tmp * tmp
+
+                tmp = x_im_sum / (k_ny * np.cos(theta[t] * pi))
+                l2_x_im = l2_x_im + tmp * tmp
+
+                tmp = lap_im_sum / (k_ny ** 2)
+                l2_l_im = l2_l_im + tmp * tmp
+
+            l2_x_re = np.sqrt(l2_x_re / n_samples)
+            l2_l_re = np.sqrt(l2_l_re / n_samples)
+
+            l2_x_im = np.sqrt(l2_x_im / n_samples)
+            l2_l_im = np.sqrt(l2_l_im / n_samples)
+
+            # below some data structuring
+            x_res.append([l2_x_re, l2_x_im, k[i] * np.cos(theta[t] * pi) / (k_ny * np.cos(theta[t] * pi))])
+            lap_res.append([l2_l_re, l2_l_im, k[i] ** 2 / k_ny ** 2])
+
+        x_res_np = np.array(x_res)
+        lap_res_np = np.array(lap_res)
+
+        x_res_all.append(x_res_np)
+        lap_res_all.append(lap_res_np)
+
+
+    return x_res_all, lap_res_all

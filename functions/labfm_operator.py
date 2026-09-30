@@ -1,5 +1,4 @@
 from functions.plot import plot_kernel
-import shutil
 import numpy as np
 import math
 from functions.nodes import neighbour_nodes_kdtree
@@ -7,13 +6,9 @@ from scipy.spatial import cKDTree
 from tqdm import tqdm
 import time
 
+DTYPE = np.float32
 
 def monomial_power(polynomial):
-    """
-
-    :param polynomial:
-    :return:
-    """
     monomial_exponent = [(total_polynomial - i, i)
                          for total_polynomial in range(1, polynomial + 1)
                          for i in range(total_polynomial + 1)]
@@ -21,13 +16,8 @@ def monomial_power(polynomial):
 
 
 def calc_scaling_vector(monomial_exponent, h):
-    """
 
-    :param monomial_exponent:
-    :param h:
-    :return:
-    """
-    scaling_m = np.zeros((len(monomial_exponent), 1))
+    scaling_m = np.zeros((len(monomial_exponent), 1), dtype=DTYPE)
     index = 0
     for exp_x, exp_y in monomial_exponent:
         exp_h = -(exp_x + exp_y)
@@ -45,17 +35,11 @@ def calc_monomial(neigh_xy_d, mon_power):
                         math.factorial(power_x) * math.factorial(power_y))
             row.append(temp_variable)
         monomial.append(row)
-    monomial = np.array(monomial)
+    monomial = np.array(monomial, dtype=DTYPE)
     return monomial.T
 
 
 def gaussian_rbf(neighbours_r, h):
-    """
-
-    :param neighbours_r:
-    :param h:
-    :return:
-    """
 
     q = neighbours_r / h
 
@@ -77,19 +61,11 @@ def wendland_rbf_c2(neighbours_r, h):
     if q > 2:
         raise ValueError('q cannot be larger than 2')
 
-    w_ji = (7/(4 * math.pi)) * (2 * q + 1) * (1 - .5*q)**4 # current one
-    #w_ji = (7 / (math.pi)) * (1 - q) ** 4 * (1 + 4 * q)
+    w_ji = (7/(4 * math.pi)) * (2 * q + 1) * (1 - .5*q)**4
     return float(w_ji)
 
 
 def calc_hp(exp_a, dist_xy, h):
-    """
-    This function gives the first 10 expansions of the Hermite polynomial
-    :param dist_xy:
-    :param exp_a:
-    :param h:
-    :return:
-    """
 
     z = dist_xy / (h * (2 ** .5))
 
@@ -147,8 +123,6 @@ def calc_abf(neigh_r, neigh_xy, m_power, h):  # Needs to be written
     for index, (x_dist, y_dist) in enumerate(neigh_xy):
         row = []
         rbf = wendland_rbf_c2(neigh_r[index], h)
-
-        #rbf = wendland_rbf_c6(neigh_r[index], h)
         for power_a, power_b in m_power:
             h_a = calc_hp(power_a, x_dist, h)
             h_b = calc_hp(power_b, y_dist, h)
@@ -156,35 +130,23 @@ def calc_abf(neigh_r, neigh_xy, m_power, h):  # Needs to be written
             temp_variable = (rbf / (two_power ** .5)) * h_a * h_b
             row.append(temp_variable)
         basis_func.append(row)
-    return np.array(basis_func)
+    return np.array(basis_func, dtype=DTYPE)
 
 
 def calc_m(basis_func, monomial):
-    """
-
-    :param monomial:
-    :param basis_func:
-    :return:
-    """
-    m_matrix = np.zeros((basis_func.shape[1], monomial.shape[0]))
+    m_matrix = np.zeros((basis_func.shape[1], monomial.shape[0]), dtype=DTYPE)
     for j in range(len(basis_func)):
         m_matrix = m_matrix + np.outer(monomial[:,j], basis_func[j])
     return m_matrix
 
 
 def pointing_v(polynomial, d):
-    """
-
-    :param polynomial:
-    :param d:
-    :return:
-    """
 
     if d not in ["x", "y", "Laplace"]:
         raise ValueError("The valid_string argument must be 'x', 'y', or 'Laplace'")
 
     n = int((polynomial ** 2 + 3 * polynomial) / 2)
-    cd = np.zeros((n, 1))
+    cd = np.zeros((n, 1), dtype=DTYPE)
     if d == 'x':
         cd[0] = 1
     elif d == 'y':
@@ -196,13 +158,6 @@ def pointing_v(polynomial, d):
 
 
 def calc_weights(coordinates, polynomial, h, total_nodes):
-    """
-
-    :param coordinates:
-    :param polynomial:
-    :param h:
-    :return:
-    """
 
     weights_x = {}
     weights_y = {}
@@ -216,74 +171,30 @@ def calc_weights(coordinates, polynomial, h, total_nodes):
     cd_y = pointing_v(polynomial, 'y')
     cd_y = cd_y * scaling_vector
     cd_laplace = pointing_v(polynomial, 'Laplace')
-    noise = np.random.choice((-1, 1)) * np.random.uniform(0, 1e-3, size=cd_laplace.shape)
-    #cd_laplace = cd_laplace + noise
     cd_laplace = cd_laplace * scaling_vector
     tree = cKDTree(coordinates)
     neigh_xy_dist = {}
 
-    t_total = 0.0
-    count = 0
-
-    for ref_x, ref_y in tqdm(coordinates, desc="Calculating LABFM_Weights for " + str(total_nodes) + ", " + str(polynomial), ncols=100):
+    for ref_x, ref_y in tqdm(coordinates, desc="Calculating LABFM Weights for " + str(total_nodes) + ", " + str(polynomial), ncols=100):
         if ref_x > 0.5 or ref_x < -0.5 or ref_y > 0.5 or ref_y < -0.5: continue
 
         ref_node            = (ref_x, ref_y)
-        #neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes(coordinates, ref_node, h, max_neighbors=20)
-        neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, 2*h, tree, max_neighbors=10)
+        neigh_r_d, neigh_xy_d, neigh_coor_dict[ref_node] = neighbour_nodes_kdtree(coordinates, ref_node, 2*h, tree, max_neighbors=100)
+        neigh_r_d = np.asarray(neigh_r_d, dtype=DTYPE)
+        neigh_xy_d = np.asarray(neigh_xy_d, dtype=DTYPE)
         neigh_xy_dist[ref_node] = neigh_xy_d
-
-        t0 = time.perf_counter()
-        monomial            = calc_monomial(neigh_xy_d, monomial_exponent) * scaling_vector
-        basis_func          = calc_abf(neigh_r_d, neigh_xy_d, monomial_exponent, h)
-        m_matrix            = calc_m(basis_func, monomial)
-        psi_x               = np.linalg.solve(m_matrix, cd_x)
-        #psi_y               = np.linalg.solve(m_matrix, cd_y)
-        #cd_laplace1 = cd_laplace + \
-        #              cd_laplace * (np.random.choice((-1, 1)) *
-        #                            np.random.uniform(0, 1.5*1e-2, size=cd_laplace.shape)) + \
-        #              (np.random.choice((-1, 1)) * np.random.uniform(0, 1.5*1e-2, size=cd_laplace.shape))
+        monomial = calc_monomial(neigh_xy_d, monomial_exponent) * scaling_vector
+        basis_func = calc_abf(neigh_r_d, neigh_xy_d, monomial_exponent, h)
+        m_matrix = calc_m(basis_func, monomial)
+        psi_x = np.linalg.solve(m_matrix, cd_x)
+        psi_y               = np.linalg.solve(m_matrix, cd_y)
         psi_laplace         = np.linalg.solve(m_matrix, cd_laplace)
         node_weight_x       = basis_func @ psi_x
-        t_total += time.perf_counter() - t0
-        count += 1
-        #node_weight_y       = basis_func @ psi_y
-        #node_weight_laplace = basis_func @ psi_laplace
+        node_weight_y       = basis_func @ psi_y
+        node_weight_laplace = basis_func @ psi_laplace
         weights_x[ref_node] = node_weight_x[:,0]
-        #weights_y[ref_node] = node_weight_y[:,0]
-        #weights_laplace[ref_node] = node_weight_laplace[:,0]
+        weights_y[ref_node] = node_weight_y[:,0]
+        weights_laplace[ref_node] = node_weight_laplace[:,0]
 
-    print(f"Total compute time (selected block): {t_total:.4e} s")
-    print(f"Number of processed nodes: {count}")
 
     return weights_x, weights_y, weights_laplace, neigh_coor_dict, neigh_xy_dist
-
-
-def calc_l2_gnn(test_function, derivative='laplace'):
-    if derivative.lower() not in ['laplace']:
-        raise ValueError("Invalid derivative type")
-
-    dt_analy = test_function.laplace_true
-    dt_aprox = test_function.laplace_gnn
-
-    error = []
-    norm = []
-
-    for ref_node in dt_aprox:
-        error.append((dt_analy[ref_node] - dt_aprox[ref_node]) ** 2)
-        norm.append(dt_analy[ref_node] ** 2)
-
-    l2 = np.sqrt(sum(error)) / np.sqrt(sum(norm))
-
-    return l2
-
-
-def calc_l2(pred, true):
-    error = []
-    norm  = []
-    for ref_node in pred:
-        error.append((true[ref_node] - pred[ref_node]) ** 2)
-        norm.append(true[ref_node] ** 2)
-
-    l2 = np.sqrt(sum(error)) / np.sqrt(sum(norm))
-    return l2
